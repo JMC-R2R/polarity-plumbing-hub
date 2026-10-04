@@ -2047,8 +2047,9 @@ function wpStyledHtml(doc, meta){
     // The theme's title is hidden on posts because the hero image shows it; this keeps one H1
     // in the page for Google and screen readers without showing the title twice.
     + '.r2r-post .r2r-h1{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
-  const faq = (meta.faqs || []).length ? '\n<script type="application/ld+json">\n' + JSON.stringify({ '@context':'https://schema.org', '@type':'FAQPage',
-    mainEntity: meta.faqs.map(f => ({ '@type':'Question', name:f.q, acceptedAnswer:{ '@type':'Answer', text:f.a } })) }, null, 2) + '\n<\/script>' : '';
+  const faqs = articleFaqs(c, meta);
+  const faq = faqs.length ? '\n<script type="application/ld+json">\n' + JSON.stringify({ '@context':'https://schema.org', '@type':'FAQPage',
+    mainEntity: faqs.map(f => ({ '@type':'Question', name:f.q, acceptedAnswer:{ '@type':'Answer', text:f.a } })) }, null, 2) + '\n<\/script>' : '';
   return '<!-- ' + (meta.title || 'Blog post') + ' | content hub version ' + (meta.version || '') + ' -->\n'
     + '<style>' + css + '<\/style>\n<div class="r2r-post">\n<h1 class="r2r-h1">' + wpEsc(meta.title || '') + '</h1>\n' + c.innerHTML.trim() + '\n</div>' + faq;
 }
@@ -2164,6 +2165,23 @@ $('codeClose').addEventListener('click', closeCode);
 $('codeModal').addEventListener('click', e => { if (e.target.id === 'codeModal') closeCode(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('codeModal').hidden) closeCode(); });
 
+/* FAQ schema is read from the article as it stands (the H3s under the FAQs H2), so an edit made
+   on the hub after the writer saved it reaches the schema too. The writer's meta.faqs is only a
+   fallback for an article with no FAQ section in that shape. */
+function articleFaqs(root, meta){
+  const h2 = [...root.querySelectorAll('h2')].find(h => /faq|frequently asked/i.test(h.textContent));
+  const out = [];
+  if (h2) {
+    let cur = null;
+    for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) {
+      if (el.tagName === 'H3') { cur = { q: el.textContent.trim(), a: '' }; out.push(cur); }
+      else if (cur && !el.matches('figure,img,blockquote')) cur.a = (cur.a + ' ' + el.textContent).replace(/\s+/g, ' ').trim();
+    }
+  }
+  const found = out.filter(f => f.q && f.a);
+  return found.length ? found : (meta.faqs || []);
+}
+
 async function buildWpPack(itemId, btn){
   const r = ITEMS.find(x => x.id === itemId);
   if (btn) btn.disabled = true; badge('Building the WordPress pack…');
@@ -2195,8 +2213,9 @@ async function buildWpPack(itemId, btn){
 
     const site = (r.target_url || '').replace(/^(https?:\/\/[^/]+).*$/, '$1');
     const url = r.target_url || (site + '/blog/' + (meta.slug || '') + '/');
-    const faq = (meta.faqs || []).length ? { '@context':'https://schema.org', '@type':'FAQPage',
-      mainEntity: meta.faqs.map(f => ({ '@type':'Question', name:f.q, acceptedAnswer:{ '@type':'Answer', text:f.a } })) } : null;
+    const faqs = articleFaqs(doc, meta);
+    const faq = faqs.length ? { '@context':'https://schema.org', '@type':'FAQPage',
+      mainEntity: faqs.map(f => ({ '@type':'Question', name:f.q, acceptedAnswer:{ '@type':'Answer', text:f.a } })) } : null;
     if (faq) body += '\n\n<!-- wp:html -->\n<script type="application/ld+json">\n' + JSON.stringify(faq, null, 2) + '\n<\/script>\n<!-- /wp:html -->';
     const authorName = String(meta.author || '').split(',')[0].trim();
     const posting = { '@context':'https://schema.org', '@type':'BlogPosting', headline: meta.title || r.title,
