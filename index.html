@@ -869,6 +869,16 @@
   .schedset input:disabled{opacity:.5;cursor:not-allowed}
   .wpbtn{border-color:#21759b!important;color:#21759b!important;font-weight:700}
   .wpbtn:hover{background:#21759b!important;color:#fff!important}
+  /* Copy HTML window: look before you copy. */
+  .codeseg{margin-left:auto}
+  .arthead .btn{padding:8px 16px;border-radius:9px}
+  .codebody{flex:1;min-height:0;display:flex;background:#eef1f5}
+  .codebody iframe{flex:1;border:0;background:#fff;width:100%;height:100%}
+  .codebody pre{flex:1;margin:0;overflow:auto;padding:18px 20px;background:#0f1218;color:#d6e2f0;font-family:var(--mono);
+    font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  .codebody pre[hidden],.codebody iframe[hidden]{display:none}
+  .codefoot{padding:10px 18px;border-top:1px solid #e3e8ee;font-size:12.5px;color:#5d6b79;background:#f7f9fb}
+  @media screen and (max-width:860px){ .codeseg{margin-left:0} .arthead{flex-wrap:wrap} }
 </style>
 </head>
 <body>
@@ -904,6 +914,19 @@
 </div>
 
 
+<div id="codeModal" class="artwrap" hidden>
+  <div class="artsheet" role="dialog" aria-modal="true" aria-label="WordPress HTML">
+    <div class="arthead"><span class="t" id="codeTitle"></span>
+      <span class="seg codeseg" role="tablist"><button type="button" class="on" data-codeview="preview">Preview</button><button type="button" data-codeview="code">HTML code</button></span>
+      <button class="btn" type="button" id="codeCopy">Copy HTML</button>
+      <button class="artx" type="button" id="codeClose" aria-label="Close">&times;</button></div>
+    <div class="codebody">
+      <iframe id="codeFrame" title="How the post will look in WordPress" sandbox="allow-same-origin"></iframe>
+      <pre id="codeText" hidden></pre>
+    </div>
+    <div class="codefoot">Paste into a WordPress <b>Custom HTML</b> block. Upload the photos first and keep their file names, so they appear in place.</div>
+  </div>
+</div>
 <div id="artModal" class="artwrap" hidden>
   <div class="artsheet" role="dialog" aria-modal="true" aria-label="Read and comment on this article">
     <div class="arthead"><span class="t" id="artTitle"></span>
@@ -1886,6 +1909,8 @@ function wpStyledHtml(doc, meta){
     + '<style>' + css + '<\/style>\n<div class="r2r-post">\n' + c.innerHTML.trim() + '\n</div>' + faq;
 }
 
+let CODEHTML = '', CODEITEM = null;
+
 async function copyWpHtml(itemId, btn){
   if (btn) btn.disabled = true; badge('Preparing the HTML…');
   try {
@@ -1893,18 +1918,54 @@ async function copyWpHtml(itemId, btn){
     if (error || !art) throw new Error('no article');
     const meta = Object.assign({}, art.meta || {}, { version: art.version });
     const doc = document.createElement('div'); doc.innerHTML = art.html;
-    if (doc.firstElementChild && doc.firstElementChild.tagName === 'IMG') doc.firstElementChild.remove();  // hero = featured image
+    let heroSrc = '';
+    if (doc.firstElementChild && doc.firstElementChild.tagName === 'IMG') { heroSrc = doc.firstElementChild.getAttribute('src'); doc.firstElementChild.remove(); }
     doc.querySelectorAll('h1').forEach(h => h.remove());
     const names = (meta.images || []).map(i => i.file.replace(/\.(png|jpe?g)$/i, '.jpg'));
-    let n = 0; doc.querySelectorAll('img').forEach(img => { img.dataset.wpname = names[n++] || ((meta.slug || 'image') + '-' + n + '.jpg'); });
-    const html = wpStyledHtml(doc, meta);
-    await navigator.clipboard.writeText(html);
-    sb.rpc('ch_log_team_event', { p_item_id: itemId, p_kind: 'pack_downloaded', p_detail: { version: art.version, how: 'copied HTML' } });
-    badge('HTML copied. Paste it into a Custom HTML block.','ok');
+    const srcByName = {};
+    let n = 0; doc.querySelectorAll('img').forEach(img => {
+      const nm = names[n++] || ((meta.slug || 'image') + '-' + n + '.jpg');
+      img.dataset.wpname = nm; srcByName[nm] = img.getAttribute('src'); });
+    CODEHTML = wpStyledHtml(doc, meta); CODEITEM = { id: itemId, version: art.version };
+    // Preview: the same code, with the photos shown from the hub until they are uploaded to WordPress.
+    let shown = CODEHTML;
+    Object.keys(srcByName).forEach(nm => { shown = shown.split('/wp-content/uploads/' + nm).join(srcByName[nm]); });
+    const r = ITEMS.find(x => x.id === itemId) || {};
+    $('codeFrame').srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<style>body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#222;background:#fff}'
+      + '.wpnote{background:#f3f4f6;color:#6b7280;font-size:12px;text-align:center;padding:7px}'
+      + '.entry{max-width:780px;margin:0 auto;padding:28px 20px 60px}.entry h1{font-size:34px;line-height:1.15;margin:0 0 18px}'
+      + '.featured{width:100%;border-radius:6px;display:block;margin:0 0 24px}</style></head><body>'
+      + '<div class="wpnote">Preview: your theme supplies the post title, featured image, fonts and page width</div>'
+      + '<main class="entry"><h1>' + esc(meta.title || r.title || '') + '</h1>'
+      + (heroSrc ? '<img class="featured" src="' + heroSrc + '" alt="">' : '') + shown + '</main></body></html>';
+    $('codeText').textContent = CODEHTML;
+    $('codeTitle').textContent = (meta.title || r.title || 'Post') + ' · WordPress HTML';
+    setCodeView('preview');
+    $('codeModal').hidden = false; document.body.style.overflow = 'hidden';
+    badge('', '');
   } catch (e) {
-    badge('Could not copy the HTML.','err');
+    badge('Could not prepare the HTML.','err');
   } finally { if (btn) btn.disabled = false; }
 }
+
+function setCodeView(v){
+  document.querySelectorAll('[data-codeview]').forEach(b => b.classList.toggle('on', b.dataset.codeview === v));
+  $('codeFrame').hidden = v !== 'preview'; $('codeText').hidden = v !== 'code';
+}
+document.querySelectorAll('[data-codeview]').forEach(b => b.addEventListener('click', () => setCodeView(b.dataset.codeview)));
+$('codeCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(CODEHTML); }
+  catch (e) { setCodeView('code'); const r = document.createRange(); r.selectNodeContents($('codeText'));
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); badge('Press Cmd+C to copy the selected code.','err'); return; }
+  $('codeCopy').textContent = 'Copied ✓'; setTimeout(() => { $('codeCopy').textContent = 'Copy HTML'; }, 1800);
+  if (CODEITEM) sb.rpc('ch_log_team_event', { p_item_id: CODEITEM.id, p_kind: 'pack_downloaded', p_detail: { version: CODEITEM.version, how: 'copied HTML' } });
+  badge('HTML copied. Paste it into a Custom HTML block.','ok');
+});
+function closeCode(){ $('codeModal').hidden = true; document.body.style.overflow = ''; }
+$('codeClose').addEventListener('click', closeCode);
+$('codeModal').addEventListener('click', e => { if (e.target.id === 'codeModal') closeCode(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('codeModal').hidden) closeCode(); });
 
 async function buildWpPack(itemId, btn){
   const r = ITEMS.find(x => x.id === itemId);
@@ -2563,7 +2624,7 @@ function itemCard(r, staff){
             + (OPENCOMMENTS[r.id] ? '<span class="ccount">'+OPENCOMMENTS[r.id]+'</span>' : '') + '</button>' : '')
       + (staff && ARTICLES[r.id]
           ? '<button class="notebtn wpbtn" type="button" data-wppack="'+id+'" title="HTML with headings, photos, SEO details and schema, ready for WordPress">WordPress pack</button>'
-            + '<button class="notebtn wpbtn" type="button" data-wpcopy="'+id+'" title="Copy the post as one block of HTML for a Custom HTML block">Copy HTML</button>' : '')
+            + '<button class="notebtn wpbtn" type="button" data-wpcopy="'+id+'" title="See the post and its HTML, then copy it for a WordPress Custom HTML block">View &amp; copy HTML</button>' : '')
       + link(r.doc_url, '', 'Draft') + link(r.live_url, 'live', 'Live')
     + '</div></div>'
     + '<div class="ticks">'
