@@ -1902,11 +1902,14 @@ function wpStyledHtml(doc, meta){
     + '.r2r-post .r2r-cta{margin:24px 0;padding:18px 20px;border-radius:10px;background:#f1f6fa;border-left:5px solid ' + edge + '}'
     + '.r2r-post .r2r-cta p{margin:0}'
     + '.r2r-post .r2r-btn{display:table;margin-top:12px;background:' + accent + ';color:' + onAccent + ';font-weight:700;text-decoration:none;padding:11px 20px;border-radius:9px}'
-    + '.r2r-post .r2r-btn:hover{opacity:.92}';
+    + '.r2r-post .r2r-btn:hover{opacity:.92}'
+    // The theme's title is hidden on posts because the hero image shows it; this keeps one H1
+    // in the page for Google and screen readers without showing the title twice.
+    + '.r2r-post .r2r-h1{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
   const faq = (meta.faqs || []).length ? '\n<script type="application/ld+json">\n' + JSON.stringify({ '@context':'https://schema.org', '@type':'FAQPage',
     mainEntity: meta.faqs.map(f => ({ '@type':'Question', name:f.q, acceptedAnswer:{ '@type':'Answer', text:f.a } })) }, null, 2) + '\n<\/script>' : '';
   return '<!-- ' + (meta.title || 'Blog post') + ' | content hub version ' + (meta.version || '') + ' -->\n'
-    + '<style>' + css + '<\/style>\n<div class="r2r-post">\n' + c.innerHTML.trim() + '\n</div>' + faq;
+    + '<style>' + css + '<\/style>\n<div class="r2r-post">\n<h1 class="r2r-h1">' + wpEsc(meta.title || '') + '</h1>\n' + c.innerHTML.trim() + '\n</div>' + faq;
 }
 
 let CODEHTML = '', CODEITEM = null;
@@ -1936,8 +1939,8 @@ async function copyWpHtml(itemId, btn){
       + '.wpnote{background:#f3f4f6;color:#6b7280;font-size:12px;text-align:center;padding:7px}'
       + '.entry{max-width:780px;margin:0 auto;padding:28px 20px 60px}.entry h1{font-size:34px;line-height:1.15;margin:0 0 18px}'
       + '.featured{width:100%;border-radius:6px;display:block;margin:0 0 24px}</style></head><body>'
-      + '<div class="wpnote">Preview: your theme supplies the post title, featured image, fonts and page width</div>'
-      + '<main class="entry"><h1>' + esc(meta.title || r.title || '') + '</h1>'
+      + '<div class="wpnote">Preview: the theme shows the featured image, with its post title hidden. Fonts and width come from your theme.</div>'
+      + '<main class="entry">'
       + (heroSrc ? '<img class="featured" src="' + heroSrc + '" alt="">' : '') + shown + '</main></body></html>';
     $('codeText').textContent = CODEHTML;
     $('codeTitle').textContent = (meta.title || r.title || 'Post') + ' · WordPress HTML';
@@ -1991,7 +1994,8 @@ async function buildWpPack(itemId, btn){
     doc.querySelectorAll('img').forEach(img => { img.dataset.wpname = save(img, names[n++] || ((meta.slug || 'image') + '-' + n + '.jpg')); });
     const files = { next: img => img.dataset.wpname };
     doc.querySelectorAll('h1').forEach(h => h.remove());   // WordPress prints the post title as the H1
-    let body = wpBlocks(doc, files);
+    let body = '<!-- wp:html -->\n<h1 style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">'
+      + wpEsc(meta.title || r.title) + '</h1>\n<!-- /wp:html -->\n\n' + wpBlocks(doc, files);
     const copyHtml = wpStyledHtml(doc, Object.assign({}, meta, { version: art.version }));
 
     const site = (r.target_url || '').replace(/^(https?:\/\/[^/]+).*$/, '$1');
@@ -2052,11 +2056,16 @@ async function buildWpPack(itemId, btn){
     zip.file('HOW-TO-PUBLISH.txt', [
       'Publishing "' + (meta.title || r.title) + '" in WordPress',
       '',
-      'ONE-TIME SETUP (per website): Settings > Media > untick "Organise my uploads into month- and',
-      'year-based folders" and save. The HTML points at /wp-content/uploads/<file name>.',
+      'ONE-TIME SETUP (per website):',
+      ' a) Settings > Media > untick "Organise my uploads into month- and year-based folders" and save.',
+      '    The HTML points at /wp-content/uploads/<file name>.',
+      ' b) Hide the post title on single blog posts in the theme settings (the hero image already shows it).',
+      '    Astra: Customise > Blog > Single Post > untick Title. Kadence: Customise > Posts/Pages Layout >',
+      '    Single Post > Post Title off. GeneratePress/Elementor: "Disable title" per post or in the theme.',
+      '    The post code carries its own hidden H1, so the page keeps exactly one H1 for Google.',
       '',
       '1. Media > Add New: upload everything in the images folder. Keep the file names exactly as they are.',
-      '2. Posts > Add New. Type the post title (WordPress shows it as the H1, so the post has none).',
+      '2. Posts > Add New. Type the post title (it becomes the page and browser title; the theme hides it on screen).',
       '3. Add a "Custom HTML" block and paste ALL of copy-paste-post.html (or press Copy HTML in the hub).',
       '   Preview: it matches the client preview, table, call-to-action boxes and photos included.',
       '   Prefer normal editable blocks instead? Use the Code editor with editable-blocks-version.html,',
