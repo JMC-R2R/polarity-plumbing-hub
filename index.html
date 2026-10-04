@@ -879,6 +879,24 @@
   .codebody pre[hidden],.codebody iframe[hidden]{display:none}
   .codefoot{padding:10px 18px;border-top:1px solid #e3e8ee;font-size:12.5px;color:#5d6b79;background:#f7f9fb}
   @media screen and (max-width:860px){ .codeseg{margin-left:0} .arthead{flex-wrap:wrap} }
+  /* Blog pipeline: stage chip on the card and the QC row (staff). */
+  .bstage{display:inline-flex;align-items:center;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;border:1px solid}
+  .bstage.b-writing{color:#7c5cd6;background:#f3effc;border-color:#ddd3f5}
+  .bstage.b-qc{color:#b45309;background:#fff5e6;border-color:#f4d6a6}
+  .bstage.b-changes{color:#b42318;background:#fdecec;border-color:#f3c2c2}
+  .bstage.b-ready{color:#0f766e;background:#e6f6f3;border-color:#b8e3da}
+  .bstage.b-client{color:#0a6a93;background:#eaf7fe;border-color:#bfe6f8}
+  .qcrow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-top:10px;padding:12px 14px;border-radius:12px;
+    border:1px solid #f4d6a6;background:linear-gradient(135deg,#fffaf2,#fff)}
+  .qcrow.qc-approved{border-color:#b8e3da;background:linear-gradient(135deg,#f1faf7,#fff)}
+  .qcrow.qc-changes{border-color:#f3c2c2;background:linear-gradient(135deg,#fff6f6,#fff)}
+  .qcrow .qctext{flex:1 1 320px;font-size:14px;color:var(--ink)}
+  .qcrow .qcsc{color:var(--muted);font-size:12.5px}
+  .qcrow .qcbtns{display:flex;gap:8px}
+  .qcrow .btn{padding:8px 16px;border-radius:9px}
+  .qcrow .btn.qcok{background:#1c7c54;border-color:#1c7c54;color:#fff}
+  .qcrow .qcbox{flex-basis:100%;display:grid;gap:8px}
+  .qcrow .qcbox textarea{width:100%;font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:9px}
 </style>
 </head>
 <body>
@@ -1186,7 +1204,7 @@ let ARTICLES = {}, OPENCOMMENTS = {}, ART = null, ARTCOMMENTS = [], PENDINGSEL =
 
 async function loadArticleIndex(){
   const [a, c] = await Promise.all([
-    sb.from('ch_item_articles').select('item_id,version,updated_at').eq('client_id', CLIENT_ID),
+    sb.from('ch_item_articles').select('item_id,version,updated_at,qc_status,qc_name,qc_at,qc_note,released_at,scores').eq('client_id', CLIENT_ID),
     sb.from('ch_item_comments').select('item_id,status').eq('client_id', CLIENT_ID)
   ]);
   ARTICLES = {}; OPENCOMMENTS = {};
@@ -1914,6 +1932,59 @@ function wpStyledHtml(doc, meta){
 
 let CODEHTML = '', CODEITEM = null;
 
+/* ---------------- blog pipeline: writing, QC, monthly release ----------------
+   Jose 04/10/2026. A blog topic approval queues the cloud writer; Janice or Jhen QC the
+   draft here; on the 15th QC-approved blogs in the client's open months are released and
+   the client is emailed. Clients only ever see a released article. */
+function blogStage(r){
+  if (r.stream !== 'blog') return null;
+  const a = ARTICLES[r.id];
+  if (ME.kind !== 'internal') {
+    if (a) return null;                                    // released: Read & comment shows instead
+    if (r.review_on) return { cls:'b-ready', label:'Ready for you on ' + ausDate(r.review_on) };
+    if (r.topic_approved && !r.approved) return { cls:'b-writing', label:'Being written' };
+    return null;
+  }
+  if (!a) return r.topic_approved && !r.approved ? { cls:'b-writing', label:'Writing' } : null;
+  if (a.released_at) return { cls:'b-client', label:'With the client' };
+  if (a.qc_status === 'approved') return { cls:'b-ready', label:'QC approved · releases ' + ausDate(r.review_on) };
+  if (a.qc_status === 'changes') return { cls:'b-changes', label:'Sent back for changes' };
+  return { cls:'b-qc', label:'Ready for QC' };
+}
+
+function qcPanel(r, staff){
+  const a = ARTICLES[r.id];
+  if (!staff || r.stream !== 'blog' || !a || a.released_at) return '';
+  const id = esc(r.id);
+  const sc = a.scores || {};
+  const scores = (sc.seo || sc.ai_search) ? ' · Surfer SEO ' + esc(sc.seo ?? '?') + ', AI search ' + esc(sc.ai_search ?? '?') : '';
+  let state;
+  if (a.qc_status === 'approved') state = 'QC approved by <b>' + esc(a.qc_name || '') + '</b>. Goes to the client on <b>' + esc(ausDate(r.review_on)) + '</b>.';
+  else if (a.qc_status === 'changes') state = 'Sent back by <b>' + esc(a.qc_name || '') + '</b>: “' + esc(a.qc_note || '') + '”. The writer is revising it.';
+  else state = '<b>Ready for QC.</b> Read it, then approve it for the next client release or send it back.';
+  const can = ME.admin === true;
+  return '<div class="qcrow qc-' + esc(a.qc_status) + '"><div class="qctext">' + state + '<span class="qcsc">' + scores + '</span></div>'
+    + (can && a.qc_status !== 'approved'
+        ? '<div class="qcbtns"><button class="btn qcok" type="button" data-qcok="' + id + '">QC approve</button>'
+          + '<button class="btn ghost" type="button" data-qcback="' + id + '">Send back</button></div>'
+        : (can ? '<div class="qcbtns"><button class="btn ghost" type="button" data-qcback="' + id + '">Send back</button></div>' : ''))
+    + '<div class="qcbox hide" data-qcbox="' + id + '"><textarea data-qcnote="' + id + '" rows="2" placeholder="What should the writer change?"></textarea>'
+    + '<div><button class="btn" type="button" data-qcsend="' + id + '">Send back</button> <button class="btn ghost" type="button" data-qccancel="' + id + '">Cancel</button></div></div>'
+    + '</div>';
+}
+
+// Photos saved in the hub's blog-media store are fetched and embedded so the pack zips them.
+async function inlineRemoteImages(doc){
+  await Promise.all([...doc.querySelectorAll('img[src^="http"]')].map(async img => {
+    try {
+      const r = await fetch(img.getAttribute('src')); if (!r.ok) return;
+      const b = await r.blob();
+      const data = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); });
+      img.setAttribute('src', String(data).replace(/^data:[^;]+;/, 'data:image/jpeg;'));
+    } catch (e) {}
+  }));
+}
+
 async function copyWpHtml(itemId, btn){
   if (btn) btn.disabled = true; badge('Preparing the HTML…');
   try {
@@ -1979,6 +2050,7 @@ async function buildWpPack(itemId, btn){
     if (error || !art) throw new Error('no article');
     const meta = art.meta || {};
     const doc = document.createElement('div'); doc.innerHTML = art.html;
+    await inlineRemoteImages(doc);
     const zip = new JSZip(), imgDir = zip.folder('images');
     // Photos: the hero becomes the featured image; the rest keep their brief names.
     const names = (meta.images || []).map(i => i.file);
@@ -2606,6 +2678,8 @@ function itemCard(r, staff){
   if (r.post_type) facts.push('<span class="ptype" style="margin:0">'+esc(POST_TYPE[r.post_type]||r.post_type)+'</span>');
   facts.push('<span class="sp '+st+'">'+esc(CLIENT_STATUS[r.client_status]||r.client_status)+'</span>');
   if (r.scheduled_for) facts.push('<span class="golive">Goes live '+esc(ausDate(r.scheduled_for))+'</span>');
+  const blogState = blogStage(r);
+  if (blogState) facts.push('<span class="bstage '+blogState.cls+'">'+esc(blogState.label)+'</span>');
 
   const target = r.stream === 'gbp' && r.target_query
     ? '<span class="target">Targets: <b>'+esc(r.target_query)+'</b></span>'
@@ -2671,6 +2745,7 @@ function itemCard(r, staff){
         + ((n.writer || n.publisher) ? '<span class="owners" style="margin:0;font-size:12px">Write: '+esc(PERSON(n.writer))
             + ' · Publish: '+esc(PERSON(n.publisher))+'</span>' : '')
         + '</div>' : '')
+    + qcPanel(r, staff)
     + '<div class="panel" id="note-'+id+'" hidden><label>Notes on this item</label>'
       + '<textarea class="note" style="width:100%;min-height:80px;font-size:14.5px" data-notefor="'+id+'" placeholder="Anything you want changed before we publish?">'
       + esc(r.client_notes||'')+'</textarea></div>';
@@ -2886,6 +2961,33 @@ function wireMonthBrief(el, t){
 
   el.querySelectorAll('[data-read]').forEach(b => b.addEventListener('click', () => openArticle(b.dataset.read)));
   el.querySelectorAll('[data-wppack]').forEach(b => b.addEventListener('click', () => buildWpPack(b.dataset.wppack, b)));
+  el.querySelectorAll('[data-qcok]').forEach(b => b.addEventListener('click', async () => {
+    const id = b.dataset.qcok; b.disabled = true; badge('Saving…');
+    const { data, error } = await sb.rpc('ch_qc_article', { p_item_id: id, p_approve: true, p_note: null });
+    b.disabled = false;
+    if (error) { badge(error.message || 'Could not save QC.','err'); return; }
+    Object.assign(ARTICLES[id], { qc_status:'approved', qc_name: ME.name, qc_at: new Date().toISOString(), qc_note: null });
+    const it = ITEMS.find(x => x.id === id); if (it) it.review_on = data;
+    badge('QC approved. Goes to the client on ' + ausDate(data),'ok'); refreshMonth(t);
+  }));
+  el.querySelectorAll('[data-qcback]').forEach(b => b.addEventListener('click', () => {
+    el.querySelector('[data-qcbox="'+b.dataset.qcback+'"]').classList.remove('hide');
+    el.querySelector('[data-qcnote="'+b.dataset.qcback+'"]').focus();
+  }));
+  el.querySelectorAll('[data-qcsend]').forEach(b => b.addEventListener('click', async () => {
+    const id = b.dataset.qcsend, note = (el.querySelector('[data-qcnote="'+id+'"]').value || '').trim();
+    if (note.length < 3) { badge('Say what needs changing.','err'); return; }
+    b.disabled = true; badge('Saving…');
+    const { error } = await sb.rpc('ch_qc_article', { p_item_id: id, p_approve: false, p_note: note });
+    b.disabled = false;
+    if (error) { badge(error.message || 'Could not save QC.','err'); return; }
+    Object.assign(ARTICLES[id], { qc_status:'changes', qc_name: ME.name, qc_at: new Date().toISOString(), qc_note: note });
+    const it = ITEMS.find(x => x.id === id); if (it) it.review_on = null;
+    badge('Sent back. The writer will revise it.','ok'); refreshMonth(t);
+  }));
+  el.querySelectorAll('[data-qccancel]').forEach(b => b.addEventListener('click', () => {
+    el.querySelector('[data-qcbox="'+b.dataset.qccancel+'"]').classList.add('hide');
+  }));
   el.querySelectorAll('[data-wpcopy]').forEach(b => b.addEventListener('click', () => copyWpHtml(b.dataset.wpcopy, b)));
   el.querySelectorAll('[data-sched]').forEach(inp => inp.addEventListener('change', async () => {
     const id = inp.dataset.sched, it = ITEMS.find(r => r.id === id);
