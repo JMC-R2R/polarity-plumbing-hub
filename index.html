@@ -1952,10 +1952,30 @@ async function buildWpPack(itemId, btn){
 
     zip.file('copy-paste-post.html', copyHtml + '\n');
     zip.file('editable-blocks-version.html', body + '\n');
-    zip.file('schema-only-if-no-seo-plugin.html',
-      '<!-- Rank Math and Yoast already output BlogPosting and BreadcrumbList. Only add this block if the site has neither. -->\n'
-      + '<script type="application/ld+json">\n' + JSON.stringify(posting, null, 2) + '\n<\/script>\n'
-      + '<script type="application/ld+json">\n' + JSON.stringify(crumbs, null, 2) + '\n<\/script>\n');
+    // Plain text, not .html: a browser shows a page of <script> tags as blank, which reads as "empty".
+    const block = (o) => '<script type="application/ld+json">\n' + JSON.stringify(o, null, 2) + '\n<\/script>';
+    zip.file('schema.txt', [
+      'SCHEMA MARKUP for "' + (meta.title || r.title) + '"',
+      'Copy everything between the lines, including the <script> tags.',
+      '',
+      '=== 1. FAQ SCHEMA: always add =====================================',
+      'Already included at the end of copy-paste-post.html. Only paste this separately if you',
+      'publish with the editable blocks version, into a Custom HTML block at the end of the post.',
+      '',
+      faq ? block(faq) : '(this post has no FAQ section)',
+      '',
+      '=== 2. ARTICLE (BlogPosting) SCHEMA ==============================',
+      'ONLY if the site has no SEO plugin. Rank Math and Yoast already add this automatically.',
+      'Replace the date with the go-live date if it shows YYYY-MM-DD.',
+      '',
+      block(posting),
+      '',
+      '=== 3. BREADCRUMB SCHEMA ==========================================',
+      'ONLY if the site has no SEO plugin. Rank Math and Yoast add it once breadcrumbs are on.',
+      '',
+      block(crumbs),
+      ''
+    ].join('\n'));
     const line = (k, v) => k.padEnd(20) + (v || '(not set)') + '\n';
     zip.file('seo-settings.txt',
         line('Post title', meta.title || r.title)
@@ -1989,7 +2009,9 @@ async function buildWpPack(itemId, btn){
       '8. Schedule the post for the go-live date, then set the same date in the hub so the client and the change log see it.',
       '',
       'After it goes live, the post-publish check confirms: page loads, no noindex, canonical correct,',
-      'listed in the sitemap, schema valid, cache cleared, sitemap resubmitted to Google Search Console.'
+      'listed in the sitemap, schema valid, cache cleared, sitemap resubmitted to Google Search Console.',
+      '',
+      'Schema: see schema.txt. Test the live URL at https://search.google.com/test/rich-results'
     ].join('\n') + '\n');
     const blob = await zip.generateAsync({ type:'blob' });
     const a = document.createElement('a');
