@@ -859,6 +859,14 @@
   .fb .fm{font-size:12.5px;color:var(--muted);margin-top:8px}
   .fb .fgo{white-space:nowrap}
   @media screen and (max-width:640px){ .fb{grid-template-columns:40px minmax(0,1fr)} .fb .fgo{grid-column:2} }
+  /* Publishing: go-live date and the WordPress pack (delivery team). */
+  .golive{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#0f766e;background:#e6f6f3;
+    border:1px solid #b8e3da;border-radius:999px;padding:2px 9px}
+  .schedset{display:inline-flex;align-items:center;gap:7px}
+  .schedset input{font:inherit;font-size:13.5px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .schedset input:disabled{opacity:.5;cursor:not-allowed}
+  .wpbtn{border-color:#21759b!important;color:#21759b!important;font-weight:700}
+  .wpbtn:hover{background:#21759b!important;color:#fff!important}
 </style>
 </head>
 <body>
@@ -1777,6 +1785,154 @@ async function wireFeedback(el){
   paint();
 }
 
+/* ---------------- WordPress pack (delivery team) ----------------
+   Jose 04/10/2026. One zip per blog: post-body.html in WordPress block markup (paste into
+   the Code editor and every heading, list, table, photo and button arrives as a proper
+   block), the photos as files, the SEO fields, and the schema. Built in the browser from
+   the saved article, so it is always the latest approved version. */
+function wpEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function wpBlocks(root, files){
+  const out = [];
+  const inner = el => el.innerHTML.trim();
+  [...root.children].forEach(el => {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'h2' || tag === 'h3' || tag === 'h4') {
+      const lvl = +tag[1];
+      out.push('<!-- wp:heading' + (lvl === 2 ? '' : ' {"level":' + lvl + '}') + ' -->\n<' + tag + ' class="wp-block-heading">' + inner(el) + '</' + tag + '>\n<!-- /wp:heading -->');
+    } else if (tag === 'p') {
+      const img = el.querySelector('img');
+      if (img && el.textContent.trim() === '') { out.push(wpImage(img, '', files)); return; }
+      out.push('<!-- wp:paragraph -->\n<p>' + inner(el) + '</p>\n<!-- /wp:paragraph -->');
+    } else if (tag === 'figure' && el.querySelector('img')) {
+      const cap = el.querySelector('figcaption');
+      out.push(wpImage(el.querySelector('img'), cap ? cap.innerHTML : '', files));
+    } else if (tag === 'img') {
+      out.push(wpImage(el, '', files));
+    } else if (tag === 'ul' || tag === 'ol') {
+      const items = [...el.children].map(li => '<!-- wp:list-item -->\n<li>' + li.innerHTML.trim() + '</li>\n<!-- /wp:list-item -->').join('\n');
+      out.push('<!-- wp:list' + (tag === 'ol' ? ' {"ordered":true}' : '') + ' -->\n<' + tag + ' class="wp-block-list">' + items + '</' + tag + '>\n<!-- /wp:list -->');
+    } else if (tag === 'table' || el.querySelector('table')) {
+      const tb = tag === 'table' ? el : el.querySelector('table');
+      out.push('<!-- wp:table -->\n<figure class="wp-block-table"><table class="has-fixed-layout">' + tb.innerHTML.trim().replace(/>\s+</g, '><') + '</table></figure>\n<!-- /wp:table -->');
+    } else if (tag === 'blockquote') {
+      // Our call-to-action boxes: text plus a button.
+      const a = el.querySelector('a');
+      const text = el.cloneNode(true); if (text.querySelector('a')) text.querySelector('a').remove();
+      out.push('<!-- wp:group {"className":"r2r-cta","layout":{"type":"constrained"}} -->\n<div class="wp-block-group r2r-cta">'
+        + '<!-- wp:paragraph -->\n<p>' + text.textContent.trim().replace(/^(Need us to check it out\?)/, '<strong>$1</strong>') + '</p>\n<!-- /wp:paragraph -->'
+        + (a ? '\n\n<!-- wp:buttons -->\n<div class="wp-block-buttons"><!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="'
+               + wpEsc(a.getAttribute('href')) + '">' + wpEsc(a.textContent.trim()) + '</a></div>\n<!-- /wp:button --></div>\n<!-- /wp:buttons -->' : '')
+        + '</div>\n<!-- /wp:group -->');
+    } else {
+      out.push('<!-- wp:html -->\n' + el.outerHTML + '\n<!-- /wp:html -->');
+    }
+  });
+  return out.join('\n\n');
+}
+
+function wpImage(img, caption, files){
+  const name = files.next(img);
+  return '<!-- wp:image {"sizeSlug":"large"} -->\n<figure class="wp-block-image size-large"><img src="images/' + wpEsc(name) + '" alt="' + wpEsc(img.getAttribute('alt') || '') + '"/>'
+    + (caption ? '<figcaption class="wp-element-caption">' + caption + '</figcaption>' : '') + '</figure>\n<!-- /wp:image -->';
+}
+
+async function loadJsZip(){
+  if (window.JSZip) return window.JSZip;
+  await new Promise((ok, bad) => { const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+  return window.JSZip;
+}
+
+async function buildWpPack(itemId, btn){
+  const r = ITEMS.find(x => x.id === itemId);
+  if (btn) btn.disabled = true; badge('Building the WordPress pack…');
+  try {
+    const [{ data: art, error }, JSZip] = await Promise.all([
+      sb.from('ch_item_articles').select('html,meta,version').eq('item_id', itemId).maybeSingle(), loadJsZip()]);
+    if (error || !art) throw new Error('no article');
+    const meta = art.meta || {};
+    const doc = document.createElement('div'); doc.innerHTML = art.html;
+    const zip = new JSZip(), imgDir = zip.folder('images');
+    // Photos: the hero becomes the featured image; the rest keep their brief names.
+    const names = (meta.images || []).map(i => i.file);
+    let n = 0;
+    const save = (img, name) => {
+      const m = /^data:image\/(\w+);base64,(.*)$/.exec(img.getAttribute('src') || '');
+      if (m) imgDir.file(name.replace(/\.(png|jpe?g)$/i, '') + '.jpg', m[2], { base64: true });
+      return name.replace(/\.(png|jpe?g)$/i, '') + '.jpg';
+    };
+    const first = doc.firstElementChild;
+    let featured = null;
+    if (first && first.tagName === 'IMG') { featured = save(first, meta.hero_file || (meta.slug || 'featured') + '-hero.jpg'); first.remove(); }
+    const files = { next: img => save(img, names[n++] || ((meta.slug || 'image') + '-' + n + '.jpg')) };
+    doc.querySelectorAll('h1').forEach(h => h.remove());   // WordPress prints the post title as the H1
+    let body = wpBlocks(doc, files);
+
+    const site = (r.target_url || '').replace(/^(https?:\/\/[^/]+).*$/, '$1');
+    const url = r.target_url || (site + '/blog/' + (meta.slug || '') + '/');
+    const faq = (meta.faqs || []).length ? { '@context':'https://schema.org', '@type':'FAQPage',
+      mainEntity: meta.faqs.map(f => ({ '@type':'Question', name:f.q, acceptedAnswer:{ '@type':'Answer', text:f.a } })) } : null;
+    if (faq) body += '\n\n<!-- wp:html -->\n<script type="application/ld+json">\n' + JSON.stringify(faq, null, 2) + '\n<\/script>\n<!-- /wp:html -->';
+    const authorName = String(meta.author || '').split(',')[0].trim();
+    const posting = { '@context':'https://schema.org', '@type':'BlogPosting', headline: meta.title || r.title,
+      description: meta.meta_description || r.meta_description || '', mainEntityOfPage: url,
+      image: featured ? site + '/wp-content/uploads/' + featured : undefined,
+      author: authorName ? { '@type':'Person', name: authorName, jobTitle: (String(meta.author).split(',')[1] || '').trim() || undefined } : undefined,
+      publisher: { '@type':'Organization', name: CLIENT_NAME, url: site },
+      datePublished: r.scheduled_for || 'YYYY-MM-DD' };
+    const crumbs = { '@context':'https://schema.org', '@type':'BreadcrumbList', itemListElement: [
+      { '@type':'ListItem', position:1, name:'Home', item: site + '/' },
+      { '@type':'ListItem', position:2, name:'Blog', item: site + '/blog/' },
+      { '@type':'ListItem', position:3, name: meta.title || r.title, item: url } ] };
+
+    zip.file('post-body.html', body + '\n');
+    zip.file('schema-only-if-no-seo-plugin.html',
+      '<!-- Rank Math and Yoast already output BlogPosting and BreadcrumbList. Only add this block if the site has neither. -->\n'
+      + '<script type="application/ld+json">\n' + JSON.stringify(posting, null, 2) + '\n<\/script>\n'
+      + '<script type="application/ld+json">\n' + JSON.stringify(crumbs, null, 2) + '\n<\/script>\n');
+    const line = (k, v) => k.padEnd(20) + (v || '(not set)') + '\n';
+    zip.file('seo-settings.txt',
+        line('Post title', meta.title || r.title)
+      + line('Slug', meta.slug) + line('Full URL', url)
+      + line('Meta title', meta.meta_title ? meta.meta_title + '  (' + meta.meta_title.length + ' characters)' : '')
+      + line('Meta description', (meta.meta_description || r.meta_description) ? (meta.meta_description || r.meta_description) + '  (' + (meta.meta_description || r.meta_description).length + ' characters)' : '')
+      + line('Focus keyword', meta.keyword || r.main_keyword) + line('Category', meta.category) + line('Author', meta.author)
+      + line('Go-live date', r.scheduled_for ? ausDate(r.scheduled_for) : 'not scheduled yet, set it in the hub')
+      + line('Featured image', featured ? featured + '   alt: ' + (meta.hero_alt || meta.title || r.title) : '')
+      + '\nPhotos in the post (alt text is already in post-body.html):\n'
+      + (meta.images || []).map(i => '  ' + i.file.replace(/\.(png|jpe?g)$/i, '.jpg') + '   alt: ' + i.alt).join('\n') + '\n'
+      + '\nArticle version ' + art.version + ' from the ' + CLIENT_NAME + ' content hub.\n');
+    zip.file('HOW-TO-PUBLISH.txt', [
+      'Publishing "' + (meta.title || r.title) + '" in WordPress',
+      '',
+      '1. Media > Add New: upload everything in the images folder.',
+      '2. Posts > Add New. Type the post title (WordPress shows it as the H1, so the body has none).',
+      '3. Top-right menu (three dots) > Code editor. Paste ALL of post-body.html. Exit the code editor.',
+      '   Headings, lists, the table, photos and the inspection buttons all arrive as normal blocks.',
+      '4. Click each photo > Replace > Media Library and pick the matching file. The alt text is already set.',
+      '5. Set the featured image (Post settings > Featured image) to the hero file.',
+      '6. Permalink: use the slug in seo-settings.txt. Category and author as listed.',
+      '7. SEO plugin box: paste the meta title, meta description and focus keyword from seo-settings.txt.',
+      '   Turn on breadcrumbs in the SEO plugin if they are not already showing on posts.',
+      '   The FAQ schema is already in the last block of the post. If you use the SEO plugin FAQ block instead, delete that last block.',
+      '8. Schedule the post for the go-live date, then set the same date in the hub so the client and the change log see it.',
+      '',
+      'After it goes live, the post-publish check confirms: page loads, no noindex, canonical correct,',
+      'listed in the sitemap, schema valid, cache cleared, sitemap resubmitted to Google Search Console.'
+    ].join('\n') + '\n');
+    const blob = await zip.generateAsync({ type:'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = (meta.slug || 'blog') + '-wordpress-pack.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    sb.rpc('ch_log_team_event', { p_item_id: itemId, p_kind: 'pack_downloaded', p_detail: { version: art.version } });
+    badge('WordPress pack downloaded','ok');
+  } catch (e) {
+    badge('Could not build the WordPress pack.','err');
+  } finally { if (btn) btn.disabled = false; }
+}
+
 function renderPanel(t){
   const el = $('panel-'+cssId(t.key));
   if (!el) return;
@@ -1850,6 +2006,17 @@ const EVENT_STYLE = {
   release_withdrawn:  { bg:'#8a94a3', icon:'lock' }
 };
 EVENT_LABEL.comment_added = 'commented on the draft';
+Object.assign(EVENT_LABEL, {
+  article_saved:'saved the article', scheduled:'scheduled it to go live', unscheduled:'removed the go-live date',
+  pack_downloaded:'downloaded the WordPress pack', seo_check:'ran the post-publish SEO check',
+  wp_draft_created:'sent it to WordPress as a draft' });
+Object.assign(EVENT_STYLE, {
+  article_saved:    { bg:'#7c5cd6', icon:'doc' },
+  scheduled:        { bg:'#0f766e', icon:'cal' },
+  unscheduled:      { bg:'#8a94a3', icon:'cal' },
+  pack_downloaded:  { bg:'#21759b', icon:'doc' },
+  seo_check:        { bg:'#1c7c54', icon:'check' },
+  wp_draft_created: { bg:'#21759b', icon:'globe' } });
 
 const AV_COLOURS = ['#17B4F0','#7c5cd6','#1c7c54','#e8a33d','#d64545','#0f766e','#c2410c','#4f46e5'];
 function avatar(name, cls){
@@ -1963,8 +2130,11 @@ function eventsMarkup(){
     const extra = e.kind === 'not_approved' && d.reason ? '<div class="quote bad">' + esc(d.reason) + '</div>'
                 : (e.kind === 'note_added' || e.kind === 'comment_added') && d.note
                   ? '<div class="quote">' + (d.quote ? '<i>“' + esc(d.quote) + '”</i><br>' : '') + esc(d.note) + '</div>' : '';
+    const tail = e.kind === 'scheduled' && d.date ? ' for ' + ausDate(d.date)
+               : e.kind === 'article_saved' && d.version ? ' (version ' + d.version + ')'
+               : e.kind === 'seo_check' && d.summary ? ': ' + d.summary : '';
     out += '<div class="tev"><span class="tdot" style="background:' + st.bg + '">' + (ICON[st.icon] || '') + '</span>'
-      + '<div><div class="line1"><b>' + esc(who) + '</b> ' + esc(EVENT_LABEL[e.kind] || e.kind) + '</div>'
+      + '<div><div class="line1"><b>' + esc(who) + '</b> ' + esc((EVENT_LABEL[e.kind] || e.kind) + tail) + '</div>'
       + (d.title ? '<span class="item" title="' + esc(d.title) + '">' + esc(d.title) + '</span>' : '')
       + extra + '</div>'
       + '<span class="t">' + timeOnly(e.created_at) + '</span></div>';
@@ -2272,6 +2442,7 @@ function itemCard(r, staff){
   if (fs) facts.push('<span class="stage '+fs+'" style="margin:0">'+fs+'</span>');
   if (r.post_type) facts.push('<span class="ptype" style="margin:0">'+esc(POST_TYPE[r.post_type]||r.post_type)+'</span>');
   facts.push('<span class="sp '+st+'">'+esc(CLIENT_STATUS[r.client_status]||r.client_status)+'</span>');
+  if (r.scheduled_for) facts.push('<span class="golive">Goes live '+esc(ausDate(r.scheduled_for))+'</span>');
 
   const target = r.stream === 'gbp' && r.target_query
     ? '<span class="target">Targets: <b>'+esc(r.target_query)+'</b></span>'
@@ -2297,6 +2468,8 @@ function itemCard(r, staff){
       + (ARTICLES[r.id]
           ? '<button class="notebtn readbtn" type="button" data-read="'+id+'">Read &amp; comment'
             + (OPENCOMMENTS[r.id] ? '<span class="ccount">'+OPENCOMMENTS[r.id]+'</span>' : '') + '</button>' : '')
+      + (staff && ARTICLES[r.id]
+          ? '<button class="notebtn wpbtn" type="button" data-wppack="'+id+'" title="HTML with headings, photos, SEO details and schema, ready for WordPress">WordPress pack</button>' : '')
       + link(r.doc_url, '', 'Draft') + link(r.live_url, 'live', 'Live')
     + '</div></div>'
     + '<div class="ticks">'
@@ -2329,6 +2502,8 @@ function itemCard(r, staff){
     + (staff ? '<div class="staffrow">'
         + '<span>Assigned to <b>'+esc(n.assignee ? PERSON(n.assignee) : 'Unassigned')+'</b></span>'
         + '<span>Status <select data-status="'+id+'">'+statusOpts(r.id)+'</select></span>'
+        + '<span class="schedset" title="'+(r.approved ? 'The date this goes live on the website' : 'Approve the content before scheduling it')+'">Go-live date '
+          + '<input type="date" data-sched="'+id+'" value="'+esc(r.scheduled_for||'')+'"'+(r.approved || r.scheduled_for ? '' : ' disabled')+'></span>'
         + ((n.writer || n.publisher) ? '<span class="owners" style="margin:0;font-size:12px">Write: '+esc(PERSON(n.writer))
             + ' · Publish: '+esc(PERSON(n.publisher))+'</span>' : '')
         + '</div>' : '')
@@ -2546,6 +2721,17 @@ function wireMonthBrief(el, t){
   }));
 
   el.querySelectorAll('[data-read]').forEach(b => b.addEventListener('click', () => openArticle(b.dataset.read)));
+  el.querySelectorAll('[data-wppack]').forEach(b => b.addEventListener('click', () => buildWpPack(b.dataset.wppack, b)));
+  el.querySelectorAll('[data-sched]').forEach(inp => inp.addEventListener('change', async () => {
+    const id = inp.dataset.sched, it = ITEMS.find(r => r.id === id);
+    badge('Saving…');
+    const { error } = await sb.rpc('ch_set_schedule', { p_item_id: id, p_date: inp.value || null });
+    if (error) { inp.value = it.scheduled_for || ''; badge(/approve/i.test(error.message) ? 'Approve the content first.' : 'Could not save the date.','err'); return; }
+    it.scheduled_for = inp.value || null;
+    if (inp.value && it.client_status !== 'live') it.client_status = 'scheduled';
+    if (!inp.value && it.client_status === 'scheduled') it.client_status = 'approved';
+    badge(inp.value ? 'Scheduled for ' + ausDate(inp.value) : 'Go-live date removed','ok'); refreshMonth(t);
+  }));
 
   // Show a GBP post the way the client will see it on their profile.
   el.querySelectorAll('[data-gbp]').forEach(b => b.addEventListener('click', () => {
