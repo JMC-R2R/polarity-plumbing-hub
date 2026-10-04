@@ -686,6 +686,112 @@
     .artside{border-left:0;border-top:1px solid #e3e8ee;max-height:38vh}
     .arthead .hint{display:none}
   }
+
+  /* ---------- admin tab ----------
+     Cards, not tables: this is the page Jose, Jhen and Janice run the client from. */
+  .adm{display:grid;gap:26px}
+  .adm-sec{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;
+    box-shadow:0 1px 2px rgba(15,15,18,.04),0 12px 32px -18px rgba(15,15,18,.18)}
+  .adm-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .adm-head h3{margin:0;font-size:19px;font-weight:900;color:var(--ink-dk)}
+  .adm-head p{margin:4px 0 0;font-size:13px;color:var(--muted);max-width:62ch}
+  .adm-count{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 11px;white-space:nowrap}
+  .adm-rel{display:flex;align-items:center;gap:16px;border-radius:16px;padding:18px 20px;flex-wrap:wrap;
+    border:1px solid #f1c9c9;background:linear-gradient(135deg,#fff5f5,#fff)}
+  .adm-rel.on{border-color:#bfe3cf;background:linear-gradient(135deg,#f0faf4,#fff)}
+  .adm-rel .ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    background:#fde3e3;color:#b42318;flex:0 0 auto}
+  .adm-rel.on .ico{background:#d6f0e1;color:var(--good)}
+  .adm-rel .txt{flex:1 1 280px;min-width:0}
+  .adm-rel b{display:block;font-size:16px;color:var(--ink-dk)}
+  .adm-rel span.d{font-size:13.5px;color:var(--muted)}
+  .btn.danger{background:#fff;border-color:#e4b4b4;color:#b42318}
+  .btn.danger:hover{background:#fff5f5}
+  .adm-compose{border:1px solid var(--line);border-radius:14px;background:var(--soft);padding:14px;margin-bottom:16px;
+    transition:border-color .15s,box-shadow .15s}
+  .adm-compose:focus-within{border-color:var(--blue);box-shadow:0 0 0 4px rgba(23,180,240,.12);background:#fff}
+  .adm-compose textarea{width:100%;border:0;background:transparent;resize:vertical;min-height:52px;font:inherit;
+    font-size:15px;color:var(--ink);outline:none;padding:2px}
+  .adm-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .adm-field{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:0 11px;height:40px;flex:0 1 210px;min-width:150px}
+  .adm-field svg{flex:0 0 auto;color:var(--muted)}
+  .adm-field input{border:0;outline:none;background:transparent;font:inherit;font-size:14px;color:var(--ink);width:100%;min-width:0;margin:0;padding:0;box-shadow:none}
+  .adm-field:focus-within{border-color:var(--blue)}
+  .adm-row .btn{height:40px;padding:0 20px;border-radius:10px}
+  .adm-row .grow{flex:1}
+  .adm-msg{font-size:13px;color:var(--muted)}
+  .adm-msg.err{color:#b42318}
+  .tasks{display:grid;gap:10px}
+  .task{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;
+    border:1px solid var(--line);border-left:4px solid var(--st-start);border-radius:12px;padding:13px 14px;background:#fff;
+    transition:box-shadow .15s,transform .15s}
+  .task:hover{box-shadow:0 8px 22px -14px rgba(15,15,18,.35)}
+  .task.doing{border-left-color:var(--st-work)}
+  .task.done{border-left-color:var(--st-done);background:#fafcfb}
+  .task.done .tbody{text-decoration:line-through;color:var(--muted)}
+  .task .tbody{font-size:15px;font-weight:600;color:var(--ink-dk);line-height:1.4;word-break:break-word}
+  .task .tmeta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;font-size:12.5px;color:var(--muted)}
+  .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px 3px 3px;background:var(--soft);
+    border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--ink)}
+  .chip.plain{padding:3px 10px}
+  .chip.due-late{background:#fdecec;border-color:#f3c2c2;color:#b42318}
+  .chip.due-soon{background:#fff5e6;border-color:#f4d6a6;color:#8a5a00}
+  .av{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:800;color:#fff;flex:0 0 auto;letter-spacing:.02em}
+  .av.lg{width:42px;height:42px;font-size:15px}
+  .seg{display:inline-flex;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+  .seg button{border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);
+    padding:6px 11px;border-radius:7px;cursor:pointer;white-space:nowrap}
+  .seg button:hover{color:var(--ink)}
+  .seg button.on{background:#fff;color:var(--ink-dk);box-shadow:0 1px 3px rgba(15,15,18,.14)}
+  .seg button.on[data-val=open]{color:#8a5a00}
+  .seg button.on[data-val=doing]{color:#0a6a93}
+  .seg button.on[data-val=done]{color:var(--good)}
+  .tside{display:flex;align-items:center;gap:8px}
+  .tstate{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff5e6;color:#b7791f}
+  .tstate.doing{background:var(--soft-blue);color:#0a6a93}
+  .tstate.done{background:#e3f4ea;color:var(--good)}
+  .iconbtn{width:34px;height:34px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--muted);
+    display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .iconbtn:hover{background:#fdecec;color:#b42318;border-color:#f3c2c2}
+  .tlog{position:relative}
+  .tday{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);margin:18px 0 8px}
+  .tday:first-child{margin-top:0}
+  .tev{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px 0;position:relative}
+  .tev:not(:last-child)::after{content:"";position:absolute;left:17px;top:44px;bottom:-6px;width:2px;background:var(--line)}
+  .tdot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
+    position:relative;z-index:1;box-shadow:0 0 0 4px #fff}
+  .tev .line1{font-size:14.5px;color:var(--ink)}
+  .tev .line1 b{color:var(--ink-dk)}
+  .tev .item{display:inline-block;margin-top:5px;font-size:13px;font-weight:600;color:var(--ink-dk);background:var(--soft);
+    border:1px solid var(--line);border-radius:8px;padding:3px 9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tev .quote{margin-top:7px;font-size:13.5px;color:var(--ink);background:#fffaf0;border-left:3px solid #e8a33d;
+    border-radius:0 8px 8px 0;padding:7px 11px}
+  .tev .quote.bad{background:#fdf1f1;border-left-color:#d64545;color:#8f1d1d}
+  .tev .t{font-size:12px;color:var(--muted);white-space:nowrap;padding-top:8px}
+  .tmore{margin-top:10px}
+  .team{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:16px}
+  .member{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:13px;background:#fff}
+  .member b{display:block;font-size:14.5px;color:var(--ink-dk);line-height:1.25}
+  .member span{font-size:12.5px;color:var(--muted)}
+  .badge-admin{display:inline-block;margin-top:4px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:#0a6a93;background:var(--soft-blue);border:1px solid #bfe6f8;border-radius:999px;padding:2px 8px}
+  .adm-check{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--ink);
+    height:40px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;margin:0}
+  .adm-check input{margin:0;accent-color:var(--blue)}
+  @media screen and (max-width:640px){
+    .adm-sec{padding:16px;border-radius:14px}
+    .task{grid-template-columns:minmax(0,1fr);gap:10px}
+    .task .tcheck{display:none}
+    .tside{justify-content:space-between}
+    .adm-field{flex:1 1 100%}
+    .adm-row .btn{flex:1 1 100%}
+    .tev{grid-template-columns:36px minmax(0,1fr)}
+    .tev .t{grid-column:2;padding-top:0;order:3}
+  }
 </style>
 </head>
 <body>
@@ -1473,91 +1579,173 @@ const EVENT_LABEL = {
   release_withdrawn:'withdrew the release'
 };
 
+const ICON = {
+  lock: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  unlock: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>',
+  user: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  cal: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  mail: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  tag: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12 12 20 4 12V4h8z"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>',
+  bin: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  circle: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>',
+  doing: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4a8 8 0 1 1-8 8"/><path d="M12 8v4l3 2"/></svg>',
+  check: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+  x: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  note: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+  doc: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
+  globe: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>'
+};
+
+const EVENT_STYLE = {
+  topic_approved:     { bg:'#17B4F0', icon:'check' },
+  content_approved:   { bg:'#1c7c54', icon:'check' },
+  not_approved:       { bg:'#d64545', icon:'x' },
+  note_added:         { bg:'#e8a33d', icon:'note' },
+  comment_added:      { bg:'#e8a33d', icon:'note' },
+  doc_added:          { bg:'#7c5cd6', icon:'doc' },
+  published:          { bg:'#1c7c54', icon:'globe' },
+  released_to_client: { bg:'#1c7c54', icon:'unlock' },
+  release_withdrawn:  { bg:'#8a94a3', icon:'lock' }
+};
+EVENT_LABEL.comment_added = 'commented on the draft';
+
+const AV_COLOURS = ['#17B4F0','#7c5cd6','#1c7c54','#e8a33d','#d64545','#0f766e','#c2410c','#4f46e5'];
+function avatar(name, cls){
+  const n = String(name || '?').trim();
+  const ini = n.split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join('').toUpperCase() || '?';
+  let h = 0; for (const c of n) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return '<span class="av' + (cls ? ' ' + cls : '') + '" style="background:' + AV_COLOURS[h % AV_COLOURS.length] + '">' + esc(ini) + '</span>';
+}
+const ausDate = iso => { if (!iso) return ''; const [y,m,d] = String(iso).slice(0,10).split('-'); return d + '/' + m + '/' + y; };
+function dueChip(a){
+  if (!a.due_date) return '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(a.due_date + 'T00:00:00');
+  const days = Math.round((due - today) / 86400000);
+  const cls = a.status === 'done' ? '' : (days < 0 ? ' due-late' : (days <= 2 ? ' due-soon' : ''));
+  const lbl = a.status !== 'done' && days < 0 ? 'Overdue · ' + ausDate(a.due_date)
+            : a.status !== 'done' && days === 0 ? 'Due today' : 'Due ' + ausDate(a.due_date);
+  return '<span class="chip plain' + cls + '">' + ICON.cal + ' ' + esc(lbl) + '</span>';
+}
+function dayLabel(ts){
+  const d = new Date(ts); d.setHours(0,0,0,0);
+  const t = new Date(); t.setHours(0,0,0,0);
+  const diff = Math.round((t - d) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return d.toLocaleDateString('en-AU', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
+}
+const timeOnly = ts => new Date(ts).toLocaleTimeString('en-AU', { hour:'numeric', minute:'2-digit' });
+
 function adminMarkup(){
   const rel = RELEASED;
-  return ''
-  + '<div class="callout" style="border-color:' + (rel ? '#2f6b3a' : '#6b2b2b')
-    + ';background:' + (rel ? '#16241a' : '#2a1515') + '">'
-    + '<b>' + (rel ? 'This hub is RELEASED.' : 'This hub is NOT released.') + '</b> '
-    + (rel ? 'The client can sign in and see their plan.'
-           : 'A client who signs in sees a holding message, not the plan. Publishing the page does not release it.')
-    + '<button class="btn" type="button" id="relBtn" style="margin-left:12px">'
+  const people = [...new Set([...(ASSIGNEES||[]).map(a => a.display_name), ...(STAFF||[]).map(p => p.name)].filter(Boolean))];
+  return '<div class="adm">'
+  + '<div class="adm-rel' + (rel ? ' on' : '') + '">'
+    + '<div class="ico">' + (rel ? ICON.unlock : ICON.lock) + '</div>'
+    + '<div class="txt"><b>' + (rel ? 'Released to the client' : 'Not released yet') + '</b>'
+    + '<span class="d">' + (rel ? 'The client can sign in and see their plan.'
+           : 'A client who signs in sees a holding message, not the plan. Publishing the page does not release it.') + '</span></div>'
+    + '<button class="btn' + (rel ? ' danger' : '') + '" type="button" id="relBtn">'
     + (rel ? 'Withdraw release' : 'Release to client') + '</button>'
-    + '<span class="rejmsg" id="relMsg"></span>'
+    + '<span class="adm-msg" id="relMsg"></span>'
   + '</div>'
 
-  + '<h3>What still has to happen</h3>'
-  + '<div class="rejbox" style="border-color:#3a3a56;background:#191826">'
-    + '<textarea id="actBody" rows="2" placeholder="What needs doing for this client?"></textarea>'
-    + '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      + '<input id="actWho" placeholder="Who" style="flex:0 0 140px">'
-      + '<input id="actDue" type="date" style="flex:0 0 160px">'
-      + '<button class="btn" type="button" id="actAdd">Add</button>'
-      + '<span class="rejmsg" id="actMsg"></span>'
+  + '<section class="adm-sec">'
+    + '<div class="adm-head"><div><h3>What still has to happen</h3>'
+    + '<p>Everything outstanding for this client, who owns it and when it is due.</p></div>'
+    + '<span class="adm-count" id="actCount"></span></div>'
+    + '<div class="adm-compose">'
+      + '<textarea id="actBody" rows="2" placeholder="What needs doing for this client?"></textarea>'
+      + '<div class="adm-row">'
+        + '<label class="adm-field" title="Who">' + ICON.user + '<input id="actWho" placeholder="Who" list="admPeople"></label>'
+        + '<label class="adm-field" title="Due date">' + ICON.cal + '<input id="actDue" type="date"></label>'
+        + '<span class="grow adm-msg" id="actMsg"></span>'
+        + '<button class="btn" type="button" id="actAdd">Add task</button>'
+      + '</div>'
+      + '<datalist id="admPeople">' + people.map(n => '<option value="' + esc(n) + '">').join('') + '</datalist>'
     + '</div>'
-  + '</div>'
-  + '<div id="actList"></div>'
+    + '<div id="actList"></div>'
+  + '</section>'
 
-  + '<h3>Change log</h3>'
-  + '<p class="caption">Every approval, rejection, note, draft and publish on this client. '
-    + 'Entries before 03/10/2026 have no name against them because the log did not record one.</p>'
-  + '<div id="evList"></div>'
+  + '<section class="adm-sec">'
+    + '<div class="adm-head"><div><h3>Change log</h3>'
+    + '<p>Every approval, rejection, note, comment, draft and publish on this client. '
+    + 'Entries before 03/10/2026 have no name against them because the log did not record one.</p></div>'
+    + '<span class="adm-count" id="evCount"></span></div>'
+    + '<div id="evList"></div>'
+  + '</section>'
 
-  + '<h3>Team</h3>'
-  + '<p class="caption">Anyone active here can open every hub. Only a hub admin sees this page.</p>'
-  + '<div id="staffList"></div>';
+  + '<section class="adm-sec">'
+    + '<div class="adm-head"><div><h3>Team</h3>'
+    + '<p>Anyone active here can open every hub. Only a hub admin sees this page.</p></div>'
+    + '<span class="adm-count" id="stCount"></span></div>'
+    + '<div id="staffList"></div>'
+  + '</section>'
+  + '</div>';
 }
 
 function actionsMarkup(){
-  if (!ACTIONS.length) return '<p class="empty">Nothing outstanding.</p>';
-  return '<table class="tbl"><thead><tr><th>What</th><th>Who</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>'
-  + ACTIONS.map(a =>
-      '<tr' + (a.status==='done' ? ' style="opacity:.55"' : '') + '>'
-      + '<td>' + esc(a.body) + '<div class="caption" style="margin:2px 0 0">added by '
-        + esc(a.created_name||'?') + ' ' + fmtWhen(a.created_at) + '</div></td>'
-      + '<td>' + esc(a.assigned_to||'—') + '</td>'
-      + '<td>' + (a.due_date||'—') + '</td>'
-      + '<td><select data-actst="'+a.id+'">'
-        + ['open','doing','done'].map(x =>
-            '<option value="'+x+'"'+(a.status===x?' selected':'')+'>'+x+'</option>').join('')
-        + '</select></td>'
-      + '<td><button class="notebtn" type="button" data-actdel="'+a.id+'">Remove</button></td>'
-      + '</tr>').join('')
-  + '</tbody></table>';
+  if (!ACTIONS.length) return '<p class="empty">Nothing outstanding. Add the first task above.</p>';
+  const order = { doing:0, open:1, done:2 };
+  const list = [...ACTIONS].sort((a,b) => (order[a.status] - order[b.status])
+    || String(a.due_date||'9999').localeCompare(String(b.due_date||'9999')));
+  return '<div class="tasks">' + list.map(a =>
+      '<div class="task ' + esc(a.status) + '">'
+      + '<span class="tcheck tstate ' + esc(a.status) + '">' + (a.status === 'done' ? ICON.check : a.status === 'doing' ? ICON.doing : ICON.circle) + '</span>'
+      + '<div><div class="tbody">' + esc(a.body) + '</div>'
+        + '<div class="tmeta">'
+          + (a.assigned_to ? '<span class="chip">' + avatar(a.assigned_to) + esc(a.assigned_to) + '</span>'
+                           : '<span class="chip plain">Unassigned</span>')
+          + dueChip(a)
+          + '<span>Added by ' + esc(a.created_name || '?') + ' · ' + ausDate(a.created_at) + '</span>'
+          + (a.status === 'done' && a.done_name ? '<span>· Done by ' + esc(a.done_name) + '</span>' : '')
+        + '</div></div>'
+      + '<div class="tside"><div class="seg" role="group" aria-label="Status">'
+        + [['open','Open'],['doing','Doing'],['done','Done']].map(([v,l]) =>
+            '<button type="button" data-actst="' + a.id + '" data-val="' + v + '"' + (a.status === v ? ' class="on"' : '') + '>' + l + '</button>').join('')
+        + '</div>'
+        + '<button class="iconbtn" type="button" data-actdel="' + a.id + '" title="Remove" aria-label="Remove">' + ICON.bin + '</button></div>'
+      + '</div>').join('') + '</div>';
 }
 
 function eventsMarkup(){
   if (!EVENTS.length) return '<p class="empty">Nothing logged yet.</p>';
-  return '<table class="tbl"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Item</th></tr></thead><tbody>'
-  + EVENTS.map(e => {
-      const d = e.detail || {};
-      return '<tr><td style="white-space:nowrap">' + fmtWhen(e.created_at) + '</td>'
-      + '<td>' + esc(e.actor_name || '—') + '</td>'
-      + '<td>' + esc(EVENT_LABEL[e.kind] || e.kind)
-        + (e.kind==='not_approved' && d.reason
-            ? '<div class="caption" style="margin:2px 0 0;color:#ff9d9d">' + esc(d.reason) + '</div>' : '')
-        + (e.kind==='note_added' && d.note
-            ? '<div class="caption" style="margin:2px 0 0">' + esc(d.note) + '</div>' : '')
-      + '</td>'
-      + '<td>' + esc(d.title || '—') + '</td></tr>';
-    }).join('')
-  + '</tbody></table>';
+  let last = '', out = '<div class="tlog">';
+  EVENTS.forEach(e => {
+    const d = e.detail || {};
+    const day = dayLabel(e.created_at);
+    if (day !== last) { out += '<div class="tday">' + esc(day) + '</div>'; last = day; }
+    const st = EVENT_STYLE[e.kind] || { bg:'#8a94a3', icon:'note' };
+    const who = e.actor_name || 'Someone';
+    const extra = e.kind === 'not_approved' && d.reason ? '<div class="quote bad">' + esc(d.reason) + '</div>'
+                : (e.kind === 'note_added' || e.kind === 'comment_added') && d.note
+                  ? '<div class="quote">' + (d.quote ? '<i>“' + esc(d.quote) + '”</i><br>' : '') + esc(d.note) + '</div>' : '';
+    out += '<div class="tev"><span class="tdot" style="background:' + st.bg + '">' + (ICON[st.icon] || '') + '</span>'
+      + '<div><div class="line1"><b>' + esc(who) + '</b> ' + esc(EVENT_LABEL[e.kind] || e.kind) + '</div>'
+      + (d.title ? '<span class="item" title="' + esc(d.title) + '">' + esc(d.title) + '</span>' : '')
+      + extra + '</div>'
+      + '<span class="t">' + timeOnly(e.created_at) + '</span></div>';
+  });
+  return out + '</div>';
 }
 
 function staffMarkup(){
-  return '<table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Admin</th></tr></thead><tbody>'
-  + STAFF.map(p => '<tr><td>' + esc(p.name) + '</td><td>' + esc(p.role_title||'—') + '</td>'
-      + '<td>' + (p.hub_admin ? 'yes' : '') + '</td></tr>').join('')
-  + '</tbody></table>'
-  + '<div class="rejbox" style="border-color:#3a3a56;background:#191826;margin-top:10px">'
-    + '<label>Add a team member. They get access to every hub.</label>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-      + '<input id="mName" placeholder="Full name" style="flex:1 1 160px">'
-      + '<input id="mEmail" placeholder="email@readytorank.com.au" style="flex:1 1 200px">'
-      + '<input id="mRole" placeholder="Role" style="flex:1 1 120px">'
-      + '<label class="tickl"><input type="checkbox" id="mAdmin"> Hub admin</label>'
+  return '<div class="team">'
+  + STAFF.map(p => '<div class="member">' + avatar(p.name, 'lg')
+      + '<div><b>' + esc(p.name) + '</b><span>' + esc(p.role_title || 'Team member') + '</span>'
+      + (p.hub_admin ? '<br><span class="badge-admin">Hub admin</span>' : '') + '</div></div>').join('')
+  + '</div>'
+  + '<div class="adm-compose">'
+    + '<div style="font-size:13.5px;font-weight:700;color:var(--ink-dk)">Add a team member</div>'
+    + '<div class="adm-msg" style="margin-top:2px">They get access to every hub and sign in with a link sent to their email.</div>'
+    + '<div class="adm-row">'
+      + '<label class="adm-field">' + ICON.user + '<input id="mName" placeholder="Full name"></label>'
+      + '<label class="adm-field" style="flex-basis:250px">' + ICON.mail + '<input id="mEmail" placeholder="email@readytorank.com.au"></label>'
+      + '<label class="adm-field">' + ICON.tag + '<input id="mRole" placeholder="Role"></label>'
+      + '<label class="adm-check"><input type="checkbox" id="mAdmin"> Hub admin</label>'
+      + '<span class="grow adm-msg" id="mMsg"></span>'
       + '<button class="btn" type="button" id="mAdd">Add member</button>'
-      + '<span class="rejmsg" id="mMsg"></span>'
     + '</div>'
   + '</div>';
 }
@@ -1579,6 +1767,13 @@ async function wireAdmin(el){
     el.querySelector('#actList').innerHTML = actionsMarkup();
     el.querySelector('#evList').innerHTML  = eventsMarkup();
     el.querySelector('#staffList').innerHTML = staffMarkup();
+    const dl = el.querySelector('#admPeople');
+    if (dl) dl.innerHTML = [...new Set([...(ASSIGNEES||[]).map(x => x.display_name), ...(STAFF||[]).map(p => p.name)].filter(Boolean))]
+      .map(n => '<option value="' + esc(n) + '">').join('');
+    const openN = ACTIONS.filter(x => x.status !== 'done').length;
+    el.querySelector('#actCount').textContent = openN + ' open';
+    el.querySelector('#evCount').textContent = EVENTS.length + (EVENTS.length === 200 ? '+' : '') + ' entries';
+    el.querySelector('#stCount').textContent = STAFF.length + (STAFF.length === 1 ? ' person' : ' people');
     wireAdminRows(el, paint);
   };
   paint();
@@ -1597,14 +1792,14 @@ async function wireAdmin(el){
   el.querySelector('#actAdd').addEventListener('click', async () => {
     const body = (el.querySelector('#actBody').value || '').trim();
     const msg = el.querySelector('#actMsg');
-    if (!body) { msg.textContent = 'Type what needs doing.'; msg.style.color = '#ff9d9d'; return; }
+    if (!body) { msg.textContent = 'Type what needs doing.'; msg.className = 'grow adm-msg err'; return; }
     msg.textContent = 'Saving…'; msg.style.color = '';
     const { error } = await sb.from('ch_client_actions').insert({
       client_id: CLIENT_ID, body,
       assigned_to: (el.querySelector('#actWho').value || '').trim() || null,
       due_date: el.querySelector('#actDue').value || null,
       created_by: ME.id, created_name: ME.name });
-    if (error) { msg.textContent = 'Could not save that.'; msg.style.color = '#ff9d9d'; return; }
+    if (error) { msg.textContent = 'Could not save that.'; msg.className = 'grow adm-msg err'; return; }
     el.querySelector('#actBody').value = ''; el.querySelector('#actWho').value = '';
     el.querySelector('#actDue').value = ''; msg.textContent = '';
     await loadAdmin(); paint();
@@ -1633,10 +1828,12 @@ async function wireAdmin(el){
 }
 
 function wireAdminRows(el, paint){
-  el.querySelectorAll('[data-actst]').forEach(sel => sel.addEventListener('change', async () => {
-    const id = sel.dataset.actst, done = sel.value === 'done';
+  el.querySelectorAll('[data-actst]').forEach(btn => btn.addEventListener('click', async () => {
+    if (btn.classList.contains('on')) return;
+    const id = btn.dataset.actst, val = btn.dataset.val, done = val === 'done';
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
     await sb.from('ch_client_actions').update({
-      status: sel.value,
+      status: val,
       done_at: done ? new Date().toISOString() : null,
       done_by: done ? ME.id : null, done_name: done ? ME.name : null }).eq('id', id);
     await loadAdmin(); paint();
