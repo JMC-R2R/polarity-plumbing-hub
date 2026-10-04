@@ -626,14 +626,14 @@
   .artwrap{position:fixed;inset:0;background:rgba(12,20,28,.66);z-index:9100;display:flex;
     align-items:stretch;justify-content:center;padding:18px}
   .artwrap[hidden]{display:none}
-  .artsheet{background:#fff;color:#1b2430;width:100%;max-width:1240px;border-radius:14px;
+  .artsheet{background:#fff;color:#1b2430;width:100%;min-width:0;max-width:1240px;border-radius:14px;
     display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 70px -20px rgba(0,0,0,.6)}
   .arthead{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #e3e8ee;background:#f7f9fb}
   .arthead .t{flex:1;min-width:0;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .arthead .hint{font-size:12.5px;color:#5d6b79}
   .artx{background:none;border:0;font-size:28px;line-height:1;cursor:pointer;color:#3c4a57;padding:0 4px}
   .artmain{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}
-  .artbody{overflow:auto;padding:28px clamp(16px,4vw,54px) 60px;font-size:16.5px;line-height:1.72}
+  .artbody{min-width:0;overflow-wrap:anywhere;overflow:auto;padding:28px clamp(16px,4vw,54px) 60px;font-size:16.5px;line-height:1.72}
   .artbody h1{font-size:30px;line-height:1.15;margin:0 0 16px}
   .artbody h2{font-size:22px;margin:30px 0 10px}
   .artbody h3{font-size:17.5px;margin:22px 0 8px}
@@ -680,7 +680,9 @@
   @media screen and (max-width:860px){
     .artwrap{padding:0}
     .artsheet{border-radius:0}
-    .artmain{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+    .artmain{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+    .artbody table{display:block;overflow-x:auto}
+    .artbody h1{font-size:24px}
     .artside{border-left:0;border-top:1px solid #e3e8ee;max-height:38vh}
     .arthead .hint{display:none}
   }
@@ -1147,11 +1149,13 @@ function captureSelection(){
   pop.style.left = Math.min(window.innerWidth - 130, Math.max(8, rect.left + rect.width / 2 - 55)) + 'px';
 }
 
-document.addEventListener('mouseup', e => { if (!e.target.closest('#selPop,#cForm')) setTimeout(captureSelection, 10); });
-document.addEventListener('touchend', e => { if (!e.target.closest('#selPop,#cForm')) setTimeout(captureSelection, 250); });
+const inPopup = e => e.target instanceof Element && !!e.target.closest('#selPop,#cForm');
+document.addEventListener('mouseup', e => { if (!inPopup(e)) setTimeout(captureSelection, 10); });
+document.addEventListener('touchend', e => { if (!inPopup(e)) setTimeout(captureSelection, 250); });
 $('artBody').addEventListener('scroll', hideSel);
 
-$('selPop').addEventListener('click', () => {
+$('selPop').addEventListener('click', e => {
+  e.stopPropagation();
   if (!PENDINGSEL) return;
   const pop = $('selPop').getBoundingClientRect();
   hideSel();
