@@ -728,6 +728,20 @@
   .cform .as{font-size:12px;color:#6a7886}
   .cform .row button{padding:7px 13px;border-radius:7px;font-weight:600;cursor:pointer;border:1px solid #cfd8e0;background:#fff}
   .cform .row button.go{background:var(--accent-fill,#17B4F0);color:var(--on-accent,#fff);border-color:transparent}
+  .selpop{display:flex;gap:2px;padding:4px}
+  .selpop button{background:transparent;color:#fff;border:0;padding:5px 10px;font:inherit;font-weight:600;cursor:pointer;border-radius:6px}
+  .selpop button:hover{background:rgba(255,255,255,.15)}
+  .selpop button[hidden]{display:none}
+  .eform{width:min(460px,calc(100vw - 24px))}
+  .eform label{display:block;font-size:11.5px;font-weight:700;color:#3d4a57;margin:0 0 4px;text-transform:uppercase;letter-spacing:.05em}
+  .eform textarea{min-height:110px}
+  .eform .ai{display:flex;gap:6px;margin:10px 0 2px}
+  .eform .ai input{flex:1;min-width:0;font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid #cfd8e0;border-radius:8px}
+  .eform .ai button{padding:7px 11px;border-radius:7px;font-weight:600;cursor:pointer;border:1px solid #7c5cd6;background:#f4f0ff;color:#4b2fa8;white-space:nowrap}
+  .eform .ai button:disabled{opacity:.6;cursor:wait}
+  .eform .note{font-size:11.5px;color:#6a7886;margin:5px 0 0;line-height:1.4}
+  .artundo{font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:7px;border:1px solid #cfd8e0;background:#fff;cursor:pointer;white-space:nowrap}
+  .artundo[hidden]{display:none}
   @media screen and (max-width:860px){
     .artwrap{padding:0}
     .artsheet{border-radius:0}
@@ -949,6 +963,7 @@
   <div class="artsheet" role="dialog" aria-modal="true" aria-label="Read and comment on this article">
     <div class="arthead"><span class="t" id="artTitle"></span>
       <span class="hint">Highlight any text to leave a comment</span>
+      <button class="artundo" type="button" id="artUndo" hidden>Undo last edit</button>
       <button class="artx" type="button" id="artClose" aria-label="Close">&times;</button></div>
     <div class="artmain">
       <article class="artbody" id="artBody"></article>
@@ -958,12 +973,21 @@
     </div>
   </div>
 </div>
-<button class="selpop" id="selPop" type="button" hidden>&#128172; Comment</button>
+<div class="selpop" id="selPop" hidden><button type="button" id="selComment">&#128172; Comment</button><button type="button" id="selEdit" hidden>&#9998; Suggest edit</button></div>
 <div class="cform" id="cForm" hidden>
   <p class="q" id="cQuote"></p>
   <textarea id="cBody" placeholder="What should we change?"></textarea>
   <div class="row"><span class="as" id="cAs"></span>
     <span><button type="button" id="cCancel">Cancel</button> <button type="button" class="go" id="cSave">Save comment</button></span></div>
+</div>
+<div class="cform eform" id="eForm" hidden>
+  <p class="q" id="eQuote"></p>
+  <label for="eNew">Replace with</label>
+  <textarea id="eNew"></textarea>
+  <div class="ai"><input id="eAsk" maxlength="600" placeholder="Or tell AI what to change, e.g. make it shorter"><button type="button" id="eAI">Suggest with AI</button></div>
+  <p class="note">AI keeps to the client's voice, facts and service areas. Read the wording before you apply it. Every edit is in the change log and can be undone.</p>
+  <div class="row"><span class="as" id="eAs"></span>
+    <span><button type="button" id="eCancel">Cancel</button> <button type="button" class="go" id="eApply">Apply edit</button></span></div>
 </div>
 
 <div id="appView" class="hide">
@@ -1216,23 +1240,30 @@ const cWhen = t => { const d = new Date(t);
   return d.toLocaleDateString('en-AU', {day:'2-digit', month:'2-digit', year:'numeric'}) + ' '
        + d.toLocaleTimeString('en-AU', {hour:'numeric', minute:'2-digit'}); };
 
-async function openArticle(itemId){
+async function openArticle(itemId, keepScroll){
   const r = ITEMS.find(x => x.id === itemId);
+  const prevScroll = keepScroll ? $('artBody').scrollTop : 0;
   const { data, error } = await sb.from('ch_item_articles').select('item_id,html,version,updated_at')
     .eq('item_id', itemId).maybeSingle();
   if (error || !data) { badge('Could not open the article.','err'); return; }
-  ART = { id: itemId, title: r ? r.title : '' };
+  ART = { id: itemId, title: r ? r.title : '', html: data.html, version: data.version };
   $('artTitle').textContent = ART.title;
   $('artBody').innerHTML = data.html;
   $('artBody').querySelectorAll('a[href^="http"]').forEach(x => { x.target = '_blank'; x.rel = 'noopener'; });
   $('artModal').hidden = false; document.body.style.overflow = 'hidden';
-  $('artBody').scrollTop = 0;
+  $('artBody').scrollTop = prevScroll;
+  $('artUndo').hidden = true;
+  if (ME.kind === 'internal') {
+    document.querySelector('.arthead .hint').textContent = 'Highlight any text to comment or edit it';
+    sb.from('ch_item_article_versions').select('id', {count:'exact', head:true}).eq('item_id', itemId)
+      .then(({ count }) => { if (ART && ART.id === itemId) $('artUndo').hidden = !count; });
+  }
   await loadComments();
 }
 
 function closeArticle(){
   $('artModal').hidden = true; document.body.style.overflow = '';
-  hideSel(); $('cForm').hidden = true; ART = null;
+  hideSel(); $('cForm').hidden = true; $('eForm').hidden = true; ART = null;
   loadArticleIndex().then(updateReadBadges);
 }
 
@@ -1370,17 +1401,19 @@ function captureSelection(){
   }
   const rect = range.getBoundingClientRect();
   const pop = $('selPop');
+  $('selEdit').hidden = ME.kind !== 'internal';
   pop.hidden = false;
-  pop.style.top = Math.max(8, rect.top - 44) + 'px';
-  pop.style.left = Math.min(window.innerWidth - 130, Math.max(8, rect.left + rect.width / 2 - 55)) + 'px';
+  const pw = pop.offsetWidth;
+  pop.style.top = Math.max(8, rect.top - 48) + 'px';
+  pop.style.left = Math.min(window.innerWidth - pw - 8, Math.max(8, rect.left + rect.width / 2 - pw / 2)) + 'px';
 }
 
-const inPopup = e => e.target instanceof Element && !!e.target.closest('#selPop,#cForm');
+const inPopup = e => e.target instanceof Element && !!e.target.closest('#selPop,#cForm,#eForm');
 document.addEventListener('mouseup', e => { if (!inPopup(e)) setTimeout(captureSelection, 10); });
 document.addEventListener('touchend', e => { if (!inPopup(e)) setTimeout(captureSelection, 250); });
 $('artBody').addEventListener('scroll', hideSel);
 
-$('selPop').addEventListener('click', e => {
+$('selComment').addEventListener('click', e => {
   e.stopPropagation();
   if (!PENDINGSEL) return;
   const pop = $('selPop').getBoundingClientRect();
@@ -1390,7 +1423,7 @@ $('selPop').addEventListener('click', e => {
   $('cAs').textContent = 'Signed as ' + (ME && ME.name ? ME.name : 'you');
   const f = $('cForm'); f.hidden = false;
   const w = f.offsetWidth, h = f.offsetHeight;
-  f.style.left = Math.min(window.innerWidth - w - 12, Math.max(12, pop.left - w / 2 + 55)) + 'px';
+  f.style.left = Math.min(window.innerWidth - w - 12, Math.max(12, pop.left + pop.width / 2 - w / 2)) + 'px';
   f.style.top = Math.min(window.innerHeight - h - 12, Math.max(12, pop.bottom + 8)) + 'px';
   $('cBody').focus();
 });
@@ -1406,12 +1439,102 @@ $('cSave').addEventListener('click', async () => {
   $('cForm').hidden = true; PENDINGSEL = null; window.getSelection().removeAllRanges();
   badge('Comment saved','ok'); loadComments();
 });
+/* ---------- Suggest edit (R2R staff only) ----------
+   The edit is made on a fresh copy of the saved HTML (not the on-screen copy, which carries
+   comment marks and new-tab link attributes), located by the same quote + context the
+   comments use, and saved with the version it started from so a newer save is never
+   overwritten. One paragraph, heading or list item at a time keeps the structure intact. */
+let EDIT_AI = false;
+function selectionContext(){
+  const { text } = textIndex($('artBody'));
+  const i = locate(text, PENDINGSEL);
+  if (i < 0) return { before:'', after:'' };
+  const e = i + PENDINGSEL.quote.length;
+  return { before: text.slice(Math.max(0, i - 600), i), after: text.slice(e, e + 600) };
+}
+function replaceInHtml(html, sel){
+  const box = document.createElement('div'); box.innerHTML = html;
+  const { nodes, text } = textIndex(box);
+  const start = locate(text, sel);
+  if (start < 0) return { err: 'That passage has changed since you opened the article. Close it, reopen it and try again.' };
+  const end = start + sel.quote.length;
+  const s = nodes.find(x => start < x.start + x.n.nodeValue.length);
+  const e = nodes.find(x => end <= x.start + x.n.nodeValue.length);
+  if (!s || !e) return { err: 'Could not find that passage. Close the article, reopen it and try again.' };
+  const BLOCK = 'p,li,h2,h3,h4,td,th,figcaption,dd,dt';
+  const bs = s.n.parentElement.closest(BLOCK), be = e.n.parentElement.closest(BLOCK);
+  if (!bs || bs !== be) return { err: 'Edit one paragraph, heading or list item at a time.' };
+  const r = document.createRange(); r.setStart(s.n, start - s.start); r.setEnd(e.n, end - e.start);
+  const hasLink = !!r.cloneContents().querySelector('a') || s.n.parentElement.closest('a') !== e.n.parentElement.closest('a');
+  return { box, r, hasLink };
+}
+$('selEdit').addEventListener('click', e => {
+  e.stopPropagation();
+  if (!PENDINGSEL || ME.kind !== 'internal') return;
+  const pop = $('selPop').getBoundingClientRect();
+  hideSel();
+  EDIT_AI = false;
+  $('eQuote').textContent = PENDINGSEL.quote;
+  $('eNew').value = PENDINGSEL.quote;
+  $('eAsk').value = '';
+  $('eAs').textContent = 'Editing as ' + (ME && ME.name ? ME.name : 'you');
+  const f = $('eForm'); f.hidden = false;
+  const w = f.offsetWidth, h = f.offsetHeight;
+  f.style.left = Math.min(window.innerWidth - w - 12, Math.max(12, pop.left + pop.width / 2 - w / 2)) + 'px';
+  f.style.top = Math.min(window.innerHeight - h - 12, Math.max(12, pop.bottom + 8)) + 'px';
+  $('eNew').focus(); $('eNew').select();
+});
+$('eCancel').addEventListener('click', () => { $('eForm').hidden = true; PENDINGSEL = null; });
+$('eAsk').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('eAI').click(); } });
+$('eAI').addEventListener('click', async () => {
+  const ask = $('eAsk').value.trim();
+  if (!ask) { $('eAsk').focus(); return; }
+  if (!PENDINGSEL) return;
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session) { badge('Please sign in again.','err'); return; }
+  const ctx = selectionContext();
+  $('eAI').disabled = true; $('eAI').textContent = 'Thinking…';
+  try {
+    const r = await fetch(CFG.sbUrl + '/functions/v1/article-suggest', { method:'POST',
+      headers: { 'Content-Type':'application/json', apikey: CFG.sbKey, Authorization: 'Bearer ' + session.access_token },
+      body: JSON.stringify({ item_id: ART.id, quote: PENDINGSEL.quote, instruction: ask, before: ctx.before, after: ctx.after }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.text) { badge(j.error || 'The AI could not answer just now.','err'); return; }
+    $('eNew').value = j.text; EDIT_AI = true; $('eNew').focus();
+  } catch (err) { badge('Could not reach the AI just now.','err'); }
+  finally { $('eAI').disabled = false; $('eAI').textContent = 'Suggest with AI'; }
+});
+$('eApply').addEventListener('click', async () => {
+  if (!PENDINGSEL || !ART) return;
+  const repl = $('eNew').value.replace(/\s+/g, ' ').trim();
+  if (!repl) { badge('Type the new wording, or press Cancel.','err'); $('eNew').focus(); return; }
+  if (repl === PENDINGSEL.quote) { $('eForm').hidden = true; return; }
+  const out = replaceInHtml(ART.html, PENDINGSEL);
+  if (out.err) { badge(out.err,'err'); return; }
+  if (out.hasLink && !confirm('This passage contains a link. Applying the edit removes that link. Continue?')) return;
+  out.r.deleteContents(); out.r.insertNode(document.createTextNode(repl)); out.box.normalize();
+  $('eApply').disabled = true;
+  const { data, error } = await sb.rpc('ch_edit_article', { p_item_id: ART.id, p_html: out.box.innerHTML,
+    p_base_version: ART.version, p_old: PENDINGSEL.quote, p_new: repl, p_ai: EDIT_AI });
+  $('eApply').disabled = false;
+  if (error) { badge(error.message || 'Could not save the edit.','err'); return; }
+  $('eForm').hidden = true; PENDINGSEL = null; window.getSelection().removeAllRanges();
+  badge('Edit applied (version ' + data + ')','ok');
+  openArticle(ART.id, true);
+});
+$('artUndo').addEventListener('click', async () => {
+  if (!ART || !confirm('Undo the last change to this article?')) return;
+  const { error } = await sb.rpc('ch_undo_article_edit', { p_item_id: ART.id });
+  if (error) { badge(error.message || 'Could not undo.','err'); return; }
+  badge('Last change undone','ok'); openArticle(ART.id, true);
+});
 $('artShowRes').addEventListener('change', () => { paintMarks(); paintComments(); });
 $('artClose').addEventListener('click', closeArticle);
 $('artModal').addEventListener('click', e => { if (e.target.id === 'artModal') closeArticle(); });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('cForm').hidden) { $('cForm').hidden = true; return; }
+  if (!$('eForm').hidden) { $('eForm').hidden = true; return; }
   if (!$('artModal').hidden) closeArticle();
 });
 
@@ -2243,14 +2366,17 @@ EVENT_LABEL.comment_added = 'commented on the draft';
 Object.assign(EVENT_LABEL, {
   article_saved:'saved the article', scheduled:'scheduled it to go live', unscheduled:'removed the go-live date',
   pack_downloaded:'downloaded the WordPress pack', seo_check:'ran the post-publish SEO check',
-  wp_draft_created:'sent it to WordPress as a draft' });
+  wp_draft_created:'sent it to WordPress as a draft',
+  article_edited:'edited the article', article_restored:'undid the last change to the article' });
 Object.assign(EVENT_STYLE, {
   article_saved:    { bg:'#7c5cd6', icon:'doc' },
   scheduled:        { bg:'#0f766e', icon:'cal' },
   unscheduled:      { bg:'#8a94a3', icon:'cal' },
   pack_downloaded:  { bg:'#21759b', icon:'doc' },
   seo_check:        { bg:'#1c7c54', icon:'check' },
-  wp_draft_created: { bg:'#21759b', icon:'globe' } });
+  wp_draft_created: { bg:'#21759b', icon:'globe' },
+  article_edited:   { bg:'#7c5cd6', icon:'doc' },
+  article_restored: { bg:'#8a94a3', icon:'doc' } });
 
 const AV_COLOURS = ['#17B4F0','#7c5cd6','#1c7c54','#e8a33d','#d64545','#0f766e','#c2410c','#4f46e5'];
 function avatar(name, cls){
@@ -2363,9 +2489,11 @@ function eventsMarkup(){
     const who = e.actor_name || 'Someone';
     const extra = e.kind === 'not_approved' && d.reason ? '<div class="quote bad">' + esc(d.reason) + '</div>'
                 : (e.kind === 'note_added' || e.kind === 'comment_added') && d.note
-                  ? '<div class="quote">' + (d.quote ? '<i>“' + esc(d.quote) + '”</i><br>' : '') + esc(d.note) + '</div>' : '';
+                  ? '<div class="quote">' + (d.quote ? '<i>“' + esc(d.quote) + '”</i><br>' : '') + esc(d.note) + '</div>'
+                : e.kind === 'article_edited' && d.new
+                  ? '<div class="quote"><s>' + esc(d.old || '') + '</s><br>' + esc(d.new) + (d.ai ? ' <i>(AI suggestion)</i>' : '') + '</div>' : '';
     const tail = e.kind === 'scheduled' && d.date ? ' for ' + ausDate(d.date)
-               : e.kind === 'article_saved' && d.version ? ' (version ' + d.version + ')'
+               : (e.kind === 'article_saved' || e.kind === 'article_edited' || e.kind === 'article_restored') && d.version ? ' (version ' + d.version + ')'
                : e.kind === 'seo_check' && d.summary ? ': ' + d.summary
                : e.kind === 'pack_downloaded' && d.how ? ' (' + d.how + ')' : '';
     out += '<div class="tev"><span class="tdot" style="background:' + st.bg + '">' + (ICON[st.icon] || '') + '</span>'
@@ -2399,7 +2527,7 @@ function staffMarkup(){
 
 async function loadAdmin(){
   const [ev, ac, st] = await Promise.all([
-    sb.from('ch_item_events').select('*').eq('client_id', CLIENT_ID)
+    sb.from('ch_item_events').select('*').eq('client_id', CLIENT_ID).neq('kind', 'ai_suggested')
       .order('created_at', {ascending:false}).limit(200),
     sb.from('ch_client_actions').select('*').eq('client_id', CLIENT_ID)
       .order('status').order('created_at', {ascending:false}),
