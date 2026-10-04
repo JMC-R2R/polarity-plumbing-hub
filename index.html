@@ -694,6 +694,8 @@
   .artbody th{background:var(--accent-fill,#17B4F0);color:var(--on-accent,#fff)}
   .artbody blockquote{margin:22px 0;padding:16px 18px;border-radius:10px;background:#f1f6fa;border-left:5px solid var(--accent,#17B4F0)}
   .artbody a{color:var(--accent-ink,#0b6c95)}
+  .artbody blockquote a{display:table;margin-top:12px;background:var(--accent-fill,#17B4F0);color:var(--on-accent,#fff);
+    font-weight:700;text-decoration:none;padding:11px 20px;border-radius:9px}
   .artbody mark.cmark{background:#fff1a8;border-bottom:2px solid #e3b400;cursor:pointer;padding:0 1px;border-radius:2px}
   .artbody mark.cmark.res{background:#eef2f5;border-bottom-color:#b7c3cd}
   .artbody mark.cmark.flash{background:#ffd54d}
@@ -1844,6 +1846,66 @@ async function loadJsZip(){
   return window.JSZip;
 }
 
+/* One block of HTML that looks exactly like the client preview: its own scoped styles,
+   photos pointing at the WordPress uploads folder, FAQ schema at the end. For a Custom
+   HTML block, so nobody has to rebuild the table or the call-to-action boxes by hand. */
+function wpStyledHtml(doc, meta){
+  const cs = getComputedStyle(document.documentElement);
+  const accent = (cs.getPropertyValue('--accent-fill') || '#17B4F0').trim() || '#17B4F0';
+  const onAccent = (cs.getPropertyValue('--on-accent') || '#fff').trim() || '#fff';
+  const edge = (cs.getPropertyValue('--accent') || accent).trim() || accent;
+  const c = doc.cloneNode(true);
+  c.querySelectorAll('img').forEach(img => {
+    img.setAttribute('src', '/wp-content/uploads/' + (img.dataset.wpname || ''));
+    img.removeAttribute('data-wpname'); img.setAttribute('loading', 'lazy');
+  });
+  c.querySelectorAll('table').forEach(t => { const w = document.createElement('div'); w.className = 'r2r-table'; t.replaceWith(w); w.appendChild(t); });
+  c.querySelectorAll('blockquote').forEach(q => {
+    const d = document.createElement('div'); d.className = 'r2r-cta'; d.innerHTML = q.innerHTML;
+    d.querySelectorAll('a').forEach(a => a.className = 'r2r-btn'); q.replaceWith(d);
+  });
+  // External sources open in a new tab; the client's own pages stay in the same tab.
+  c.querySelectorAll('a[href^="http"]').forEach(a => { if (!meta.site || a.href.indexOf(meta.site) !== 0) { a.target = '_blank'; a.rel = 'noopener'; } });
+  const css = '.r2r-post{font-size:17px;line-height:1.72}'
+    + '.r2r-post h2{font-size:1.5em;line-height:1.25;margin:1.6em 0 .5em}'
+    + '.r2r-post h3{font-size:1.18em;line-height:1.3;margin:1.3em 0 .4em}'
+    + '.r2r-post figure{margin:24px 0}'
+    + '.r2r-post img{max-width:100%;height:auto;border-radius:10px;display:block}'
+    + '.r2r-post figcaption{font-size:13px;color:#6a7886;margin-top:6px}'
+    + '.r2r-post .r2r-table{overflow-x:auto;margin:20px 0}'
+    + '.r2r-post table{border-collapse:collapse;width:100%;font-size:15px;margin:0}'
+    + '.r2r-post th,.r2r-post td{border:1px solid #dfe5eb;padding:9px 11px;text-align:left;vertical-align:top}'
+    + '.r2r-post th{background:' + accent + ';color:' + onAccent + '}'
+    + '.r2r-post .r2r-cta{margin:24px 0;padding:18px 20px;border-radius:10px;background:#f1f6fa;border-left:5px solid ' + edge + '}'
+    + '.r2r-post .r2r-cta p{margin:0}'
+    + '.r2r-post .r2r-btn{display:table;margin-top:12px;background:' + accent + ';color:' + onAccent + ';font-weight:700;text-decoration:none;padding:11px 20px;border-radius:9px}'
+    + '.r2r-post .r2r-btn:hover{opacity:.92}';
+  const faq = (meta.faqs || []).length ? '\n<script type="application/ld+json">\n' + JSON.stringify({ '@context':'https://schema.org', '@type':'FAQPage',
+    mainEntity: meta.faqs.map(f => ({ '@type':'Question', name:f.q, acceptedAnswer:{ '@type':'Answer', text:f.a } })) }, null, 2) + '\n<\/script>' : '';
+  return '<!-- ' + (meta.title || 'Blog post') + ' | content hub version ' + (meta.version || '') + ' -->\n'
+    + '<style>' + css + '<\/style>\n<div class="r2r-post">\n' + c.innerHTML.trim() + '\n</div>' + faq;
+}
+
+async function copyWpHtml(itemId, btn){
+  if (btn) btn.disabled = true; badge('Preparing the HTML…');
+  try {
+    const { data: art, error } = await sb.from('ch_item_articles').select('html,meta,version').eq('item_id', itemId).maybeSingle();
+    if (error || !art) throw new Error('no article');
+    const meta = Object.assign({}, art.meta || {}, { version: art.version });
+    const doc = document.createElement('div'); doc.innerHTML = art.html;
+    if (doc.firstElementChild && doc.firstElementChild.tagName === 'IMG') doc.firstElementChild.remove();  // hero = featured image
+    doc.querySelectorAll('h1').forEach(h => h.remove());
+    const names = (meta.images || []).map(i => i.file.replace(/\.(png|jpe?g)$/i, '.jpg'));
+    let n = 0; doc.querySelectorAll('img').forEach(img => { img.dataset.wpname = names[n++] || ((meta.slug || 'image') + '-' + n + '.jpg'); });
+    const html = wpStyledHtml(doc, meta);
+    await navigator.clipboard.writeText(html);
+    sb.rpc('ch_log_team_event', { p_item_id: itemId, p_kind: 'pack_downloaded', p_detail: { version: art.version, how: 'copied HTML' } });
+    badge('HTML copied. Paste it into a Custom HTML block.','ok');
+  } catch (e) {
+    badge('Could not copy the HTML.','err');
+  } finally { if (btn) btn.disabled = false; }
+}
+
 async function buildWpPack(itemId, btn){
   const r = ITEMS.find(x => x.id === itemId);
   if (btn) btn.disabled = true; badge('Building the WordPress pack…');
@@ -1865,9 +1927,11 @@ async function buildWpPack(itemId, btn){
     const first = doc.firstElementChild;
     let featured = null;
     if (first && first.tagName === 'IMG') { featured = save(first, meta.hero_file || (meta.slug || 'featured') + '-hero.jpg'); first.remove(); }
-    const files = { next: img => save(img, names[n++] || ((meta.slug || 'image') + '-' + n + '.jpg')) };
+    doc.querySelectorAll('img').forEach(img => { img.dataset.wpname = save(img, names[n++] || ((meta.slug || 'image') + '-' + n + '.jpg')); });
+    const files = { next: img => img.dataset.wpname };
     doc.querySelectorAll('h1').forEach(h => h.remove());   // WordPress prints the post title as the H1
     let body = wpBlocks(doc, files);
+    const copyHtml = wpStyledHtml(doc, Object.assign({}, meta, { version: art.version }));
 
     const site = (r.target_url || '').replace(/^(https?:\/\/[^/]+).*$/, '$1');
     const url = r.target_url || (site + '/blog/' + (meta.slug || '') + '/');
@@ -1886,7 +1950,8 @@ async function buildWpPack(itemId, btn){
       { '@type':'ListItem', position:2, name:'Blog', item: site + '/blog/' },
       { '@type':'ListItem', position:3, name: meta.title || r.title, item: url } ] };
 
-    zip.file('post-body.html', body + '\n');
+    zip.file('copy-paste-post.html', copyHtml + '\n');
+    zip.file('editable-blocks-version.html', body + '\n');
     zip.file('schema-only-if-no-seo-plugin.html',
       '<!-- Rank Math and Yoast already output BlogPosting and BreadcrumbList. Only add this block if the site has neither. -->\n'
       + '<script type="application/ld+json">\n' + JSON.stringify(posting, null, 2) + '\n<\/script>\n'
@@ -1906,16 +1971,21 @@ async function buildWpPack(itemId, btn){
     zip.file('HOW-TO-PUBLISH.txt', [
       'Publishing "' + (meta.title || r.title) + '" in WordPress',
       '',
-      '1. Media > Add New: upload everything in the images folder.',
-      '2. Posts > Add New. Type the post title (WordPress shows it as the H1, so the body has none).',
-      '3. Top-right menu (three dots) > Code editor. Paste ALL of post-body.html. Exit the code editor.',
-      '   Headings, lists, the table, photos and the inspection buttons all arrive as normal blocks.',
-      '4. Click each photo > Replace > Media Library and pick the matching file. The alt text is already set.',
+      'ONE-TIME SETUP (per website): Settings > Media > untick "Organise my uploads into month- and',
+      'year-based folders" and save. The HTML points at /wp-content/uploads/<file name>.',
+      '',
+      '1. Media > Add New: upload everything in the images folder. Keep the file names exactly as they are.',
+      '2. Posts > Add New. Type the post title (WordPress shows it as the H1, so the post has none).',
+      '3. Add a "Custom HTML" block and paste ALL of copy-paste-post.html (or press Copy HTML in the hub).',
+      '   Preview: it matches the client preview, table, call-to-action boxes and photos included.',
+      '   Prefer normal editable blocks instead? Use the Code editor with editable-blocks-version.html,',
+      '   then click each photo > Replace > Media Library.',
+      '4. The photos fill in once step 1 is done. Their alt text is already in the code.',
       '5. Set the featured image (Post settings > Featured image) to the hero file.',
       '6. Permalink: use the slug in seo-settings.txt. Category and author as listed.',
       '7. SEO plugin box: paste the meta title, meta description and focus keyword from seo-settings.txt.',
       '   Turn on breadcrumbs in the SEO plugin if they are not already showing on posts.',
-      '   The FAQ schema is already in the last block of the post. If you use the SEO plugin FAQ block instead, delete that last block.',
+      '   The FAQ schema is already at the end of the code. If you use the SEO plugin FAQ block instead, delete that script.',
       '8. Schedule the post for the go-live date, then set the same date in the hub so the client and the change log see it.',
       '',
       'After it goes live, the post-publish check confirms: page loads, no noindex, canonical correct,',
@@ -2132,7 +2202,8 @@ function eventsMarkup(){
                   ? '<div class="quote">' + (d.quote ? '<i>“' + esc(d.quote) + '”</i><br>' : '') + esc(d.note) + '</div>' : '';
     const tail = e.kind === 'scheduled' && d.date ? ' for ' + ausDate(d.date)
                : e.kind === 'article_saved' && d.version ? ' (version ' + d.version + ')'
-               : e.kind === 'seo_check' && d.summary ? ': ' + d.summary : '';
+               : e.kind === 'seo_check' && d.summary ? ': ' + d.summary
+               : e.kind === 'pack_downloaded' && d.how ? ' (' + d.how + ')' : '';
     out += '<div class="tev"><span class="tdot" style="background:' + st.bg + '">' + (ICON[st.icon] || '') + '</span>'
       + '<div><div class="line1"><b>' + esc(who) + '</b> ' + esc((EVENT_LABEL[e.kind] || e.kind) + tail) + '</div>'
       + (d.title ? '<span class="item" title="' + esc(d.title) + '">' + esc(d.title) + '</span>' : '')
@@ -2469,7 +2540,8 @@ function itemCard(r, staff){
           ? '<button class="notebtn readbtn" type="button" data-read="'+id+'">Read &amp; comment'
             + (OPENCOMMENTS[r.id] ? '<span class="ccount">'+OPENCOMMENTS[r.id]+'</span>' : '') + '</button>' : '')
       + (staff && ARTICLES[r.id]
-          ? '<button class="notebtn wpbtn" type="button" data-wppack="'+id+'" title="HTML with headings, photos, SEO details and schema, ready for WordPress">WordPress pack</button>' : '')
+          ? '<button class="notebtn wpbtn" type="button" data-wppack="'+id+'" title="HTML with headings, photos, SEO details and schema, ready for WordPress">WordPress pack</button>'
+            + '<button class="notebtn wpbtn" type="button" data-wpcopy="'+id+'" title="Copy the post as one block of HTML for a Custom HTML block">Copy HTML</button>' : '')
       + link(r.doc_url, '', 'Draft') + link(r.live_url, 'live', 'Live')
     + '</div></div>'
     + '<div class="ticks">'
@@ -2722,6 +2794,7 @@ function wireMonthBrief(el, t){
 
   el.querySelectorAll('[data-read]').forEach(b => b.addEventListener('click', () => openArticle(b.dataset.read)));
   el.querySelectorAll('[data-wppack]').forEach(b => b.addEventListener('click', () => buildWpPack(b.dataset.wppack, b)));
+  el.querySelectorAll('[data-wpcopy]').forEach(b => b.addEventListener('click', () => copyWpHtml(b.dataset.wpcopy, b)));
   el.querySelectorAll('[data-sched]').forEach(inp => inp.addEventListener('change', async () => {
     const id = inp.dataset.sched, it = ITEMS.find(r => r.id === id);
     badge('Saving…');
