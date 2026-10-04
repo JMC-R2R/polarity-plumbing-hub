@@ -65,6 +65,33 @@
   .whochip{font-family:var(--mono);font-size:11px;color:#9aa3b2}
   .whochip b{color:var(--blue)}
   .cover{padding:8px 0 26px}
+  .hello{font-size:clamp(19px,2.4vw,24px);font-weight:800;color:#fff;margin:0 0 10px;letter-spacing:-.2px}
+  .hello-sub{font-size:14.5px;color:#c4cbd6;margin:10px 0 0;max-width:68ch}
+  .hello-sub b{color:#fff}
+  .teamnote{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.08em;text-transform:uppercase;color:#d9cdf7;background:#2a2142;border:1px solid #4a3f6b;
+    border-radius:999px;padding:5px 12px}
+  /* Month strip: every month of the plan on one row of cards, so nobody scrolls a tab bar
+     sideways. A client sees their current plan; later months show, greyed and locked. */
+  .mstrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin:0 0 22px}
+  .mcard{appearance:none;text-align:left;font:inherit;border:1px solid var(--line);border-radius:12px;background:#fff;
+    padding:12px 13px;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:border-color .15s,box-shadow .15s,transform .15s;color:var(--ink)}
+  .mcard:hover{border-color:var(--accent);box-shadow:0 8px 20px -14px rgba(15,15,18,.4);transform:translateY(-1px)}
+  .mcard.on{border-color:var(--accent);background:var(--accent-fill);color:var(--on-accent);box-shadow:0 10px 24px -14px rgba(15,15,18,.55)}
+  .mcard .mn{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+  .mcard .mm{font-size:16px;font-weight:900;line-height:1.2}
+  .mcard .mp{font-size:12px;opacity:.85}
+  .mcard .mbar{height:5px;border-radius:5px;background:rgba(127,140,160,.22);overflow:hidden;margin-top:6px}
+  .mcard .mbar i{display:block;height:100%;background:var(--good);border-radius:5px}
+  .mcard.on .mbar{background:rgba(255,255,255,.28)} .mcard.on .mbar i{background:#fff}
+  .mcard .mtag{align-self:flex-start;margin-top:5px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;border-radius:999px;padding:2px 7px;background:#f1edfb;color:#5b45a8;border:1px solid #ddd3f5}
+  .mcard.locked{cursor:not-allowed;background:repeating-linear-gradient(135deg,#f6f7f9,#f6f7f9 8px,#f1f3f6 8px,#f1f3f6 16px);
+    color:#9aa3b2;border-style:dashed}
+  .mcard.locked:hover{transform:none;box-shadow:none;border-color:var(--line)}
+  .mcard.locked .mm{color:#9aa3b2}
+  .mcard .lockrow{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
+  .sec-head .mname{font-weight:600;opacity:.65;margin-left:2px}
   .cover h1{font-size:clamp(25px,3.6vw,38px);font-weight:900;color:#fff;margin:0 0 8px}
   .cover p.sub{margin:0;color:#c4ccd8;font-size:14.5px;max-width:760px}
 
@@ -105,7 +132,17 @@
 
   /* ---------- tabs ---------- */
   .tabsbar{background:var(--ink-dk);border-top:1px solid #23252c;position:sticky;top:0;z-index:30}
-  .tabs{display:flex;overflow-x:auto}
+  .tabs{display:flex;flex-wrap:wrap;align-items:stretch;gap:0 22px}
+  .tabgroup{display:flex;flex-wrap:nowrap;align-items:stretch;min-width:0}
+  .tabgroup .glabel{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:#6f7787;display:flex;align-items:center;padding:0 10px 0 0;white-space:nowrap}
+  .tabgroup.r2ronly{margin-left:auto;background:linear-gradient(180deg,#221a36,#1a1529);border-left:1px solid #3a2f57;
+    border-right:1px solid #3a2f57;padding:0 6px}
+  .tabgroup.r2ronly .glabel{color:#b79cf0;padding-left:8px;gap:6px}
+  .tabgroup.r2ronly .tab-btn{color:#a99bc9}
+  .tabgroup.r2ronly .tab-btn:hover,.tabgroup.r2ronly .tab-btn.active{color:#fff}
+  .tabgroup.r2ronly .tab-btn.active{border-bottom-color:#b79cf0}
+  @media screen and (max-width:760px){ .tabgroup{flex-wrap:wrap} .tabgroup.r2ronly{margin-left:0;width:100%} .tab-btn{padding:11px 11px} }
   .tab-btn{appearance:none;border:0;border-bottom:3px solid transparent;background:transparent;
     color:#9aa3b2;font-family:var(--sans);font-weight:700;font-size:13px;padding:13px 16px;
     cursor:pointer;white-space:nowrap}
@@ -859,9 +896,11 @@
         </div>
       </div>
       <div class="cover">
+        <p class="hello" id="hello"></p>
         <p class="kicker">Content Hub</p>
         <h1>Polarity Plumbing</h1>
         <p class="sub">Your content plan, what we are publishing each month, and what needs your approval.</p>
+        <p class="hello-sub" id="helloSub"></p>
       </div>
     </div>
   </header>
@@ -1344,10 +1383,11 @@ async function boot(){
   if (WATERMARK) document.documentElement.style.setProperty('--wm', 'url(' + WATERMARK + ')');
 
   $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
-  $('whoChip').innerHTML = esc(ME.name) + ' &middot; <b>' + (ME.kind==='internal'?'INTERNAL':'CLIENT') + '</b>';
+  $('whoChip').innerHTML = esc(ME.name) + (ME.kind==='internal' ? ' &middot; <b>READY TO RANK</b>' : '');
 
   await loadData();
   buildTabs();
+  paintGreeting();
   openDeepLink();
 }
 
@@ -1406,6 +1446,12 @@ async function loadData(){
 /* Expand the "months" placeholder into one tab per month actually present in the
    data, drop tabs this login may not see, then number what is left. Numbering
    last is the point: a client sees 01..05 with no gaps. */
+let LOCKED_MONTHS = [], CLIENT_MONTHS = [];
+const monthName = mk => { if (!mk) return ''; const [y, m] = String(mk).split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-AU', { month:'long', year:'numeric' }); };
+const monthShort = mk => { if (!mk) return ''; const [y, m] = String(mk).split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-AU', { month:'short' }); };
+
 function expandTabs(){
   const allMonths = [...new Set(ITEMS.map(r => r.month_key))].sort();
   /* A client is only ever asked to approve one PLAN at a time. When the next
@@ -1415,7 +1461,8 @@ function expandTabs(){
      Anchored on the batch, never on a rolling count of months: approving one
      month must not slide the window and drop the month just approved. */
   let months = allMonths;
-  if (ME.kind !== 'internal' && allMonths.length > 3) {
+  // Worked out for everyone, so staff can see which months the client cannot see yet.
+  if (allMonths.length > 3) {
     const sorted = ITEMS.slice().sort((a, b) =>
       String(a.month_key).localeCompare(String(b.month_key)));
     /* The EARLIEST plan batch that still holds something unapproved, by its own
@@ -1454,6 +1501,10 @@ function expandTabs(){
         : allMonths.slice(-3);
     }
   }
+  CLIENT_MONTHS = months;
+  const lastOpen = months[months.length - 1];
+  LOCKED_MONTHS = lastOpen ? allMonths.filter(m => m > lastOpen) : [];
+  if (ME.kind === 'internal') months = allMonths;
   const out = [];
   for (const t of CFG.tabs) {
     if (!t.enabled) continue;
@@ -1465,23 +1516,59 @@ function expandTabs(){
                                      title:'Month 1 Brief', short:'Month 1'}));
       continue;
     }
-    months.forEach((mk, i) => out.push(Object.assign({}, t, {
-      key: 'month:'+mk, monthKey: mk,
-      title: 'Month '+(i+1)+' Brief', short: 'Month '+(i+1)
-    })));
+    // Numbered by position in the whole plan, so "Month 2" means the same month to the
+    // client and to the team.
+    months.forEach(mk => { const i = allMonths.indexOf(mk); out.push(Object.assign({}, t, {
+      key: 'month:'+mk, monthKey: mk, monthIndex: i + 1,
+      title: 'Month '+(i+1)+' Brief', monthLabel: monthName(mk), short: 'Month '+(i+1)
+    })); });
   }
-  out.forEach((t, i) => { t.num = String(i+1).padStart(2,'0'); });
+  // One number per tab BUTTON: every month shares the Content plan tab's number.
+  let n = 0, planNum = null;
+  out.forEach(t => {
+    if (t.monthKey !== undefined) { if (!planNum) planNum = String(++n).padStart(2,'0'); t.num = planNum; }
+    else t.num = String(++n).padStart(2,'0');
+  });
   return out;
+}
+
+const LOCK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+
+function tabButtons(){
+  // Months collapse into one "Content plan" button; the month cards inside switch months.
+  const btns = [];
+  TABLIST.forEach(t => {
+    if (t.monthKey !== undefined) {
+      if (!btns.some(b => b.key === 'plan'))
+        btns.push({ key:'plan', num:t.num, short:'Content plan', audience:t.audience });
+    } else btns.push(t);
+  });
+  return btns;
 }
 
 function buildTabs(){
   TABLIST = expandTabs();
-  $('tabs').innerHTML = TABLIST.map((t,i) =>
-    '<button class="tab-btn'+(i===0?' active':'')+'" data-key="'+esc(t.key)+'">'
-    + '<span class="tn">'+esc(t.num)+'</span>' + esc(t.short)
-    + (ME.kind==='internal' ? '<span class="aud '+t.audience+'">'
-        + (t.audience==='admin'?'Admin':(t.audience==='internal'?'Int':(t.audience==='client'?'Client':'Both'))) + '</span>' : '')
-    + '</button>').join('');
+  const btn = (t, i) => '<button class="tab-btn'+(i===0?' active':'')+'" data-key="'+esc(t.key)+'">'
+    + '<span class="tn">'+esc(t.num)+'</span>' + esc(t.short) + '</button>';
+  let all = tabButtons();
+  const isTeam = t => t.audience === 'internal' || t.audience === 'admin';
+  if (ME.kind === 'internal') {
+    // Number in the order the buttons appear: client-facing group first, then team.
+    all = all.filter(t => !isTeam(t)).concat(all.filter(isTeam));
+    all.forEach((b, i) => {
+      const num = String(i + 1).padStart(2, '0'); b.num = num;
+      TABLIST.forEach(t => { if (t.key === b.key || (b.key === 'plan' && t.monthKey !== undefined)) t.num = num; });
+    });
+  }
+  if (ME.kind === 'internal') {
+    const team = all.filter(isTeam);
+    const shared = all.filter(t => !team.includes(t));
+    $('tabs').innerHTML = '<div class="tabgroup"><span class="glabel">Client sees</span>' + shared.map(btn).join('') + '</div>'
+      + (team.length ? '<div class="tabgroup r2ronly"><span class="glabel">' + LOCK_SVG + ' Ready to Rank only</span>'
+        + team.map((t, i) => btn(t, i + shared.length)).join('') + '</div>' : '');
+  } else {
+    $('tabs').innerHTML = '<div class="tabgroup">' + all.map(btn).join('') + '</div>';
+  }
   $('panels').innerHTML = TABLIST.map((t,i) =>
     '<section class="tab-panel'+(i===0?' active':'')+'" id="panel-'+cssId(t.key)+'"></section>').join('');
   $('tabs').addEventListener('click', e => {
@@ -1494,7 +1581,14 @@ function buildTabs(){
 const cssId = key => key.replace(':','--');
 
 function selectTab(key, scroll){
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.key===key));
+  if (key === 'plan') {
+    const m = actionMonth() || TABLIST.find(t => t.monthKey);
+    key = m ? m.key : 'month:none';
+  }
+  const btnKey = String(key).startsWith('month:') ? 'plan' : key;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.key===btnKey));
+  const strip = document.querySelector('#panel-'+cssId(key)+' .mstrip');
+  if (strip) strip.outerHTML = monthStrip(key);
   document.querySelectorAll('.tab-panel').forEach(p =>
     p.classList.toggle('active', p.id === 'panel-'+cssId(key)));
   if (scroll !== false) window.scrollTo({top:0,behavior:'smooth'});
@@ -1532,14 +1626,59 @@ function openDeepLink(){
 }
 
 function head(t){
-  return '<div class="sec-head"><span class="sec-num">'+esc(t.num)+'</span><h2>'+esc(t.title)+'</h2></div>'
+  return '<div class="sec-head"><span class="sec-num">'+esc(t.num)+'</span><h2>'+esc(t.title)
+       + (t.monthLabel ? ' <span class="mname">· '+esc(t.monthLabel)+'</span>' : '')+'</h2></div>'
        + (t.intro ? '<p class="intro">'+esc(t.intro)+'</p>' : '');
+}
+
+function monthStrip(activeKey){
+  const months = TABLIST.filter(t => t.monthKey);
+  if (months.length + LOCKED_MONTHS.length < 2) return '';
+  const card = t => {
+    const rows = ITEMS.filter(r => r.month_key === t.monthKey);
+    const ok = rows.filter(r => r.approved).length;
+    const pct = rows.length ? Math.round(ok / rows.length * 100) : 0;
+    const hidden = ME.kind === 'internal' && !CLIENT_MONTHS.includes(t.monthKey);
+    return '<button type="button" class="mcard'+(t.key === activeKey ? ' on' : '')+'" data-month="'+esc(t.key)+'">'
+      + '<span class="mn">Month '+t.monthIndex+'</span><span class="mm">'+esc(t.monthLabel)+'</span>'
+      + '<span class="mp">'+ok+' of '+rows.length+' approved</span><span class="mbar"><i style="width:'+pct+'%"></i></span>'
+      + (hidden ? '<span class="mtag">Client can\'t see yet</span>' : '')
+      + '</button>';
+  };
+  const locked = ME.kind === 'internal' ? [] : LOCKED_MONTHS.map(mk =>
+    '<div class="mcard locked" aria-disabled="true" title="This month opens once the months before it are approved">'
+    + '<span class="mn">Coming up</span><span class="mm">'+esc(monthName(mk))+'</span>'
+    + '<span class="lockrow">'+LOCK_SVG+' Opens after '+esc(monthShort(CLIENT_MONTHS[CLIENT_MONTHS.length-1]))+'</span></div>');
+  return '<div class="mstrip" role="tablist" aria-label="Months">' + months.map(card).join('') + locked.join('') + '</div>';
+}
+
+document.addEventListener('click', e => {
+  const c = e.target.closest && e.target.closest('.mcard[data-month]');
+  if (c) selectTab(c.dataset.month, false);
+});
+
+/* Personal greeting: the client's first name, and what is waiting on them. */
+function paintGreeting(){
+  const first = String(ME.name || '').trim().split(/\s+/)[0] || 'there';
+  $('hello').textContent = 'Hi ' + first + ',';
+  if (ME.kind === 'internal') {
+    $('helloSub').innerHTML = '<span class="teamnote">' + LOCK_SVG + ' Viewing as the Ready to Rank team</span>';
+    return;
+  }
+  const open = ITEMS.filter(r => CLIENT_MONTHS.includes(r.month_key));
+  const waiting = open.filter(r => r.client_status === 'for_approval' || topicWaiting(r)).length;
+  const comments = Object.values(typeof OPENCOMMENTS === 'object' ? OPENCOMMENTS : {}).reduce((a, b) => a + b, 0);
+  const am = actionMonth();
+  $('helloSub').innerHTML = waiting
+    ? 'You have <b>' + waiting + ' item' + (waiting === 1 ? '' : 's') + '</b> waiting for your approval'
+      + (am ? ' in <b>' + esc(am.monthLabel) + '</b>' : '') + '.'
+    : 'You are all caught up. Nothing is waiting on you right now.';
 }
 
 function renderPanel(t){
   const el = $('panel-'+cssId(t.key));
   if (!el) return;
-  if (t.monthKey !== undefined) { el.innerHTML = head(t)+monthBriefMarkup(t); wireMonthBrief(el,t); return; }
+  if (t.monthKey !== undefined) { el.innerHTML = head(t)+monthStrip(t.key)+monthBriefMarkup(t); wireMonthBrief(el,t); return; }
   if (t.key === 'keywords')     { el.innerHTML = head(t)+keywordsMarkup();                          return; }
   if (t.key === 'wins')         { el.innerHTML = head(t)+winsMarkup();       wireWins(el);          return; }
   if (t.key === 'progress')     { el.innerHTML = head(t)+progressMarkup();   wireProgress(el);      return; }
